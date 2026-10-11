@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {REGIONS} from '../public/game/geography.js';
-import {atlas,regionGeometry,regionPath,climate} from '../public/game/atlas.js';
-import {newGame,supplied,adjacent,LAND_LINKS} from '../public/game/engine.js';
+import {REGIONS} from '../../public/game/klasik/geography.js';
+import {atlas,regionGeometry,regionPath,climate} from '../../public/game/klasik/atlas.js';
+import {newGame,supplied,adjacent,LAND_LINKS} from '../../public/game/klasik/engine.js';
 test('atlas places every playable region inside the canvas and draws actual terrain',()=>{const s=newGame({seed:420});const svg=atlas(s,{selected:null,target:null,picked:[],showSupply:false,supply:supplied(s,0),selectedSea:0});assert.equal([...svg.matchAll(/data-tile=/g)].length,96);assert.equal([...svg.matchAll(/data-sea=/g)].length,6);for(const t of s.tiles){const g=regionGeometry(t);assert.ok(g.points.every(([x,y])=>x>0&&x<1600&&y>0&&y<1220));assert.ok(svg.includes(regionPath(t)));}assert.ok(svg.includes('gradientUnits="userSpaceOnUse"'));assert.notEqual(climate(s.tiles[0]),climate(s.tiles[95]));});
 test('named passes are bidirectional playable links and distant unrelated regions stay disconnected',()=>{const s=newGame({seed:420});for(const l of LAND_LINKS){assert.ok(adjacent(s.tiles[l.a],s.tiles[l.b]));assert.ok(adjacent(s.tiles[l.b],s.tiles[l.a]));}assert.ok(!adjacent(s.tiles[0],s.tiles[95]));});
 

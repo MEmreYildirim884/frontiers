@@ -1,6 +1,6 @@
 {
   "name": "frontiers-online",
-  "version": "0.8.0",
+  "version": "2.0.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -12,7 +12,9 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js tests/klasik/*.test.js",
+    "local": "node server/local-server.js",
+    "map": "python tools/generate-map.py"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

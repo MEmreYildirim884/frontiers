@@ -1,76 +1,133 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {RoomService,RoomError} from '../server/rooms.js';
-import * as E from '../public/game/engine.js';
-class MemoryStore{
- rooms=new Map();
- async insert(r){assert.ok(!this.rooms.has(r.code));this.rooms.set(r.code,E.copy(r));}
- async get(c){return E.copy(this.rooms.get(c)??null);}
- async update(r,v){if(this.rooms.get(r.code).revision!==v)return false;this.rooms.set(r.code,E.copy(r));return true;}
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import { RoomService, RoomRouter, D1Store, IDLE_TAKEOVER_MS } from '../server/rooms.js';
+import * as G from '../public/game/js/rules/index.js';
+
+class MemoryStore {
+  rooms = new Map();
+  async insert(r) { assert.ok(!this.rooms.has(r.code)); this.rooms.set(r.code, structuredClone(r)); }
+  async get(c) { return structuredClone(this.rooms.get(c) ?? null); }
+  async update(r, v) { if (this.rooms.get(r.code).revision !== v) return false; this.rooms.set(r.code, structuredClone(r)); return true; }
 }
-async function setup(count=6,testMode=false,options={}){
- const store=new MemoryStore(),service=new RoomService(store,options),first=await service.create({name:'Egemen',config:{scenario:'development',rounds:2},testMode}),code=first.code,tokens=[first.token];
- for(let i=1;i<count;i++)tokens.push((await service.join(code,{name:'Oyuncu '+i})).token);
- async function act(i,op,data={},requestId=crypto.randomUUID()){const v=await service.get(code,tokens[i]);return service.act(code,tokens[i],{revision:v.revision,op,requestId,...data});}
- for(let i=0;i<count;i++){await act(i,'seat',{seat:i});await act(i,'ready',{ready:true});}
- return {store,service,code,tokens,act};
+
+async function lobby(count, options = {}) {
+  const store = new MemoryStore(), service = new RoomService(store, options);
+  const first = await service.create({ name: 'Emre', config: { maxRounds: 15, difficulty: 'normal' } });
+  const code = first.code, tokens = [first.token];
+  for (let i = 1; i < count; i++) tokens.push((await service.join(code, { name: 'Oyuncu ' + i })).token);
+  const act = async (i, op, data = {}) => { const v = await service.get(code, tokens[i]); return service.act(code, tokens[i], { revision: v.revision, op, requestId: crypto.randomUUID(), ...data }); };
+  return { store, service, code, tokens, act };
 }
-test('six distinct player sessions share state; only active seat can play and reconnect keeps seat',async()=>{
- const {service,code,tokens,act}=await setup();await act(0,'start');
- await assert.rejects(act(1,'command',{command:{type:'advance'}}),e=>e.status===403);
- await act(0,'command',{command:{type:'advance'}});
- const views=await Promise.all(tokens.map(t=>service.get(code,t)));
- assert.ok(views.every(v=>v.game.phase==='budget'&&v.revision===views[0].revision));
- assert.equal(views[3].seat,3);assert.equal(views[3].game.countries.filter(c=>c.goal>=0).length,1);
- assert.equal(views[3].game.config.seed,null);assert.ok(!JSON.stringify(views).includes('tokenHash'));assert.ok(!views[3].game.log.some(e=>/Harita tohumu: \d/.test(e.msg)));
- await assert.rejects(service.get(code,'0'.repeat(48)),e=>e.status===401);
+
+test('lobi: benzersiz ülke seçimi, herkes hazır olmadan başlamaz, yalnızca kurucu başlatır', async () => {
+  const { act, service, code, tokens } = await lobby(3);
+  const v = await service.get(code, tokens[1]);
+  assert.equal(v.seat, 1, 'katılan ilk boş ülkeyi alır');
+  await assert.rejects(act(2, 'seat', { seat: 0 }), /başka oyuncuda/);
+  await act(2, 'seat', { seat: 4 });
+  await assert.rejects(act(0, 'start'), /Hazır/);
+  for (const i of [0, 1, 2]) await act(i, 'ready', { ready: true });
+  await assert.rejects(act(1, 'start'), e => e.status === 403);
+  await assert.rejects(act(1, 'config', { config: { maxRounds: 10 } }), e => e.status === 403);
+  const started = await act(0, 'start');
+  assert.ok(started.started);
+  assert.deepEqual(started.game.players.filter(p => p.human).map(p => p.id).sort(), [0, 1, 4]);
 });
-test('full lobby requires six ready players; country claims are unique and host alone starts',async()=>{
- const {act,service,code}=await setup(2);
- await assert.rejects(act(0,'start'),/altı kişi/);await assert.rejects(act(1,'start'),e=>e.status===403);
- await assert.rejects(act(1,'seat',{seat:0}),/başka oyuncuda/);
- for(let i=2;i<6;i++)await service.join(code,{name:'Extra '+i});
- await assert.rejects(service.join(code,{name:'Seventh'}),/dolu/);
+
+test('boş ülkeleri yapay zekâ oynar; sıra yalnızca bir insana geldiğinde durur', async () => {
+  const { act, service, code, tokens } = await lobby(2);
+  for (const i of [0, 1]) await act(i, 'ready', { ready: true });
+  await act(0, 'start');
+  const v = await service.get(code, tokens[0]);
+  assert.ok(v.game.players[v.game.active].human, 'sıra bir insanda olmalı');
+  const activeIdx = v.game.active === v.seat ? 0 : 1, waitingIdx = 1 - activeIdx;
+  await assert.rejects(act(waitingIdx, 'command', { command: { type: 'next' } }), e => e.status === 403);
+  const me = (await service.get(code, tokens[activeIdx]));
+  const region = me.game.regions.findIndex(r => r.owner === me.seat);
+  await act(activeIdx, 'command', { command: { type: 'place', region, n: me.game.players[me.seat].reserve } });
+  await act(activeIdx, 'command', { command: { type: 'next' } });
+  await act(activeIdx, 'command', { command: { type: 'next' } });
+  const after = await act(activeIdx, 'command', { command: { type: 'endTurn' } });
+  assert.ok(after.game.players[after.game.active].human);
+  assert.notEqual(after.game.active, me.seat, 'sıra diğer insana geçmeli (aradaki yapay zekâlar oynadı)');
+  assert.ok(after.game.log.some(e => e.p !== undefined && !after.game.players[e.p].human), 'yapay zekâ hamleleri günlükte');
 });
-test('simultaneous requests cannot both spend same state; retry of committed request is idempotent',async()=>{
- const {act,service,code,tokens}=await setup();await act(0,'start');const v=await service.get(code,tokens[0]),id=crypto.randomUUID(),input={op:'command',revision:v.revision,requestId:id,command:{type:'advance'}};
- const results=await Promise.allSettled([service.act(code,tokens[0],input),service.act(code,tokens[0],{...input,requestId:crypto.randomUUID()})]);
- assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.find(r=>r.status==='rejected').reason.status,409);
- // First winner is stable because both reads precede both CAS writes.
- const retry=await service.act(code,tokens[0],input);assert.equal(retry.game.phase,'budget');assert.equal(retry.revision,v.revision+1);
+
+test('gizlilik: başkalarının gizli görevi ve token özeti görünmez; yeniden bağlanınca aynı ülke', async () => {
+  const { act, service, code, tokens } = await lobby(2);
+  for (const i of [0, 1]) await act(i, 'ready', { ready: true });
+  await act(0, 'start');
+  const v = await service.get(code, tokens[1]);
+  assert.equal(v.game.players.filter(p => p.mission).length, 1);
+  assert.ok(v.game.players[v.seat].mission);
+  assert.ok(!JSON.stringify(v).includes('tokenHash'));
+  const again = await service.get(code, tokens[1]);
+  assert.equal(again.seat, v.seat);
+  await assert.rejects(service.get(code, '0'.repeat(48)), e => e.status === 401);
 });
-test('diplomacy changes resources only after recipient accepts; third player cannot consent',async()=>{
- const {act,service,code,tokens}=await setup();await act(0,'start');const before=await service.get(code,tokens[0]);
- let v=await act(0,'command',{command:{type:'trade',other:1,give:{cash:2,food:0,energy:0},get:{cash:0,food:0,energy:0},transport:'auto'}});
- assert.equal(v.game.countries[0].cash,before.game.countries[0].cash);const proposalId=v.pending.id;
- await assert.rejects(act(2,'respond',{proposalId,accept:true}),e=>e.status===403);
- await assert.rejects(act(0,'command',{command:{type:'advance'}}),/bekleyen/);
- v=await act(1,'respond',{proposalId,accept:true});assert.equal(v.pending,null);assert.equal(v.game.countries[0].cash,before.game.countries[0].cash-2);assert.equal(v.game.countries[1].cash,before.game.countries[1].cash+2);
- v=await act(0,'command',{command:{type:'pact',other:1}});v=await act(1,'respond',{proposalId:v.pending.id,accept:false});assert.equal(v.game.pacts.length,0);
+
+test('teklifler: insana giden teklif bekler, sırası olmayan alıcı yanıtlayabilir', async () => {
+  const { act, service, code, tokens } = await lobby(2);
+  for (const i of [0, 1]) await act(i, 'ready', { ready: true });
+  await act(0, 'start');
+  const v = await service.get(code, tokens[0]);
+  const a = v.game.active === v.seat ? 0 : 1, b = 1 - a;
+  const bSeat = (await service.get(code, tokens[b])).seat;
+  await act(a, 'command', { command: { type: 'propose', to: bSeat, kind: 'alliance' } });
+  const pending = (await service.get(code, tokens[b])).game.proposals.filter(p => p.from === v.game.active && p.to === bSeat);
+  assert.equal(pending.length, 1);
+  await act(b, 'command', { command: { type: 'respond', id: pending[0].id, accept: true } });
+  const done = await service.get(code, tokens[a]);
+  assert.ok(G.hasTreaty(done.game, done.seat, bSeat, 'alliance'));
 });
-test('server rejects malformed resources and duplicate unit ids without committing',async()=>{
- const {act,service,code,tokens}=await setup();await act(0,'start');const before=await service.get(code,tokens[0]);
- await assert.rejects(act(0,'command',{command:{type:'trade',other:1,give:{cash:-2,food:0,energy:0},get:{cash:0,food:0,energy:0},transport:'auto'}}),/Kaynaklar/);
- await assert.rejects(act(0,'command',{command:{type:'attack',source:0,target:1,ids:[1,1]}}),/birlik/);
- assert.equal((await service.get(code,tokens[0])).revision,before.revision);
+
+test('uzun süre hamle yapmayan oyuncunun turunu diğerleri yapay zekâya devredebilir', async () => {
+  let now = 1_000_000;
+  const { act, service, code, tokens } = await lobby(2, { now: () => now });
+  for (const i of [0, 1]) await act(i, 'ready', { ready: true });
+  await act(0, 'start');
+  const v = await service.get(code, tokens[0]);
+  const idle = v.game.active === v.seat ? 0 : 1, other = 1 - idle;
+  await assert.rejects(act(other, 'takeover'), /süre tanı/);
+  now += IDLE_TAKEOVER_MS + 1;
+  const after = await act(other, 'takeover');
+  assert.ok(after.game.active !== v.game.active || after.game.round > v.game.round);
+  assert.ok(after.game.log.some(e => e.m.includes('yapay zekâ oynadı')));
 });
-test('two-player test skips empty countries and six-player game completes with goals revealed',async()=>{
- for(const [count,testMode] of [[2,true],[6,false]]){
- const {act,service,code,tokens}=await setup(count,testMode);await act(0,'start');let v=await service.get(code,tokens[0]),moves=0;
- while(!v.game.finished){assert.ok(v.game.active<count);v=await act(v.game.active,'command',{command:{type:'advance'}});assert.ok(++moves<100);}
- assert.equal(moves,count*2*3);assert.ok(v.game.countries.every(c=>c.goal>=0));
- }
+
+test('aynı istek kimliği iki kez uygulanmaz; eski revizyon reddedilir', async () => {
+  const { service, code, tokens } = await lobby(1);
+  const v = await service.get(code, tokens[0]);
+  const req = { op: 'ready', ready: true, revision: v.revision, requestId: 'tekrar-12345' };
+  const a = await service.act(code, tokens[0], req);
+  const b = await service.act(code, tokens[0], req);
+  assert.equal(a.revision, b.revision);
+  await assert.rejects(service.act(code, tokens[0], { op: 'ready', ready: false, revision: 0, requestId: 'baska-12345' }), e => e.status === 409);
 });
-test('defender decides air; server rolls, stale proposals fail, timeout is enforced',async()=>{
- let now=1000,rolls=0;const {store,act,service,code,tokens}=await setup(6,false,{now:()=>now,roll:()=>{rolls++;return 7;}});
- const r=await store.get(code);r.game=E.newGame({scenario:'expansion',rounds:2,seed:24});
- // Find a cross-country legal border and put a supplied infantry on it.
- const a=r.game.tiles.find(t=>t.owner===0&&E.supplied(r.game,0).has(t.id)&&r.game.tiles.some(b=>b.owner!==0&&E.adjacent(t,b))),b=r.game.tiles.find(b=>b.owner!==0&&E.adjacent(a,b));
- r.game.units.filter(u=>u.tile===a.id).forEach(u=>u.tile=r.game.countries[u.owner].capital);
- const inf=r.game.units.find(u=>u.owner===0&&u.type==='inf');inf.tile=a.id;
- store.rooms.set(code,r);await act(0,'start');await act(0,'command',{command:{type:'advance'}});await act(0,'command',{command:{type:'advance'}});
- let v=await act(0,'command',{command:{type:'attack',source:a.id,target:b.id,ids:[inf.id],attackAir:false,defendAir:true,die:1}});assert.equal(rolls,0);
- await assert.rejects(act(0,'timeout'),/henüz/);const p=v.pending.id;
- v=await act(b.owner,'respond',{proposalId:p,defendAir:false});assert.equal(v.game.lastBattle.die,7);assert.equal(rolls,1);assert.equal(v.pending,null);
- await assert.rejects(act(b.owner,'respond',{proposalId:p,defendAir:false}),/artık yok/);
- });
+
+test('yönlendirici: klasik (v0.8) odalar eski servise, yeni odalar v2 servisine gider; sürüm yoklaması', async () => {
+  const store = new MemoryStore(), router = new RoomRouter(store);
+  const classic = await router.handle('POST', '', { op: 'create', name: 'Eski', config: { scenario: 'development', rounds: 6 } });
+  const modern = await router.handle('POST', '', { op: 'create', name: 'Yeni', config: { maxRounds: 15, difficulty: 'easy' } });
+  assert.equal((await router.handle('GET', '', { probe: true }, classic.code)).v, 1);
+  assert.equal((await router.handle('GET', '', { probe: true }, modern.code)).v, 2);
+  assert.equal((await router.handle('GET', classic.token, {}, classic.code)).game.config.scenario, 'development');
+  assert.equal((await router.handle('GET', modern.token, {}, modern.code)).v, 2);
+  await assert.rejects(router.handle('GET', '', { probe: true }, 'FFFFFFFF'), e => e.status === 404);
+});
+
+test('D1 deposu: SQLite üzerinde oda kalıcıdır ve eski yazmaları reddeder', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync(new URL('../drizzle/0000_aberrant_justice.sql', import.meta.url), 'utf8'));
+  const adapter = { prepare(sql) { return { bind(...args) { return { async first() { return db.prepare(sql).get(...args); }, async run() { const r = db.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; } }; } }; } };
+  const store = new D1Store(adapter);
+  const room = await new RoomService(store).create({ name: 'Kalıcı', config: {} });
+  const b = new RoomService(new D1Store(adapter));
+  assert.equal((await b.get(room.code, room.token)).players[0].name, 'Kalıcı');
+  const old = await store.get(room.code);
+  await b.act(room.code, room.token, { op: 'ready', ready: true, revision: 0, requestId: crypto.randomUUID() });
+  assert.equal(await store.update({ ...old, revision: 1 }, 0), false);
+  db.close();
+});

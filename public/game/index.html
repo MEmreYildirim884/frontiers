@@ -1,9 +1,96 @@
 <!doctype html>
-<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101719"><title>FRONTIERS — Strateji Laboratuvarı</title><meta name="description" content="Altı ülke. Kıt kaynaklar. Zor kararlar. Ekonomi, diplomasi ve coğrafya odaklı strateji simülasyonu."><link rel="stylesheet" href="style.css"></head>
-<body><header><a class="brand" href="#"><span class="brandmark">F<span>↗</span></span><span>FRONTIERS<small>STRATEJİ LABORATUVARI</small></span></a><div class="header-right"><span class="tag">ONLINE ALPHA 0.8</span><button id="help">Nasıl oynanır <span>↗</span></button><button id="settings">Senaryolar / yeni oyun</button></div></header>
-<main><section class="intro"><div><p class="eyebrow">POWER · PROSPERITY · DIPLOMACY</p><h1>Her sınırın bir bedeli var.</h1><p>Ülkeni geliştir. İttifaklar kur. Genişlemenin maliyetini hesapla.</p></div><div class="round-card"><span>TUR</span><strong id="roundnum">01 <small>/ 06</small></strong><span id="save-status">BU TARAYICIDA OTOMATİK KAYIT</span></div></section>
-<section class="online-toolbar"><div><b>Birlikte oyna</b><p id="online-status"></p></div><div class="button-row"><button id="create-room" class="primary">Oda oluştur</button><button id="join-room">Odaya katıl</button></div></section><section id="online-panel" class="online-panel" hidden></section><div class="workspace"><aside class="left"><div class="section-heading"><h2>Ülkeler</h2><span>06 AKTÖR</span></div><div id="countries"></div><section class="box goal-box"><p class="eyebrow">SEÇİLİ SENARYO</p><h3 id="scenario-name"></h3><p id="scenario-description"></p><div id="scenario-progress"></div><button id="scenario-button" class="text-btn">Senaryoyu değiştir ↗</button><hr><button id="showgoal" class="text-btn">Gizli hedefi göster ↓</button><p id="secret" hidden></p></section><section class="box lab-box"><span class="lab-dot"></span><h3>Bir oyun, bir deney.</h3><p>Fetih tek kazanma yolu değil. Ekonomi, güvenlik ve diplomasi de puan kazandırır.</p><button class="text-btn" id="scores">Puan tablosunu incele ↗</button></section></aside>
-<section class="map-section"><div class="map-top"><div><h2>Altı Kıta · Dünya Atlası</h2><p id="maphint">Bir bölge seçerek başla.</p></div><div class="map-tools"><button id="mapzoom" title="Harita ayrıntılarını büyüt veya tüm kıtaları göster">Yakınlaştır</button><button id="supplytoggle" title="Aktif ülkenin ikmal durumunu göster">İkmal</button><button id="undo" title="Son işlemi geri al">↶ Geri al</button></div></div><section class="territory-browser" aria-label="Ülke toprakları"><div id="territory-tabs" class="territory-tabs" aria-label="Ülke seçimi"></div><div id="territory-detail" aria-live="polite"></div></section><div id="north-seas" class="sea-strip"></div><div class="map-wrap"><div class="col-labels" id="col-labels"></div><div id="map" aria-label="Altı ayrı kıta üzerinde 96 bölgeli strateji haritası"></div></div><div id="south-seas" class="sea-strip"></div><div class="legend"><span><i class="terrain-dot plain"></i>Ova</span><span><i class="terrain-dot forest"></i>Orman</span><span><i class="terrain-dot mountain"></i>Dağ</span><span><i class="terrain-dot swamp"></i>Bataklık</span><span>★ Başkent</span><span>⚓ Liman</span><span>Yeşil: kara · noktalı: deniz geçişi</span></div><section id="navy-panel" class="navy-panel"></section><div class="phase-track" id="phases"></div><div id="battle-result"></div><section class="log-box"><div class="section-heading"><h2>Oyun günlüğü</h2><button id="export" class="text-btn">Test kaydını indir ↓</button></div><div id="log" aria-live="polite"></div></section></section>
-<aside class="right"><section class="command-card"><div class="active-heading"><span id="active-dot"></span><div><small>SÖZ SENDE</small><h2 id="active-name"></h2></div><span id="phase-name"></span></div><div id="resources"></div><div id="status"></div><button id="advance" class="primary"></button><p class="micro" id="phasehelp"></p></section><section class="box region-panel"><div class="section-heading"><h2>Bölge komutası</h2><span id="region-id">—</span></div><div id="region"></div></section><section class="box"><div class="section-heading"><h2>Diplomasi</h2><span>◌</span></div><p class="muted">Karşı ülkeye takas veya anlaşma teklif et. Çevrim içi odada yanıt kendi oyuncusundan gelir.</p><button id="diplomacy" class="wide">Müzakere masası ↗</button></section><section class="box" id="crisis-panel" hidden><h2>✚ Ortak yardım krizi</h2><p id="crisis-status" class="muted"></p><button id="contribute" class="wide">Ortak fona katkı yap</button></section><p class="prototype-note">Deneysel değerler · Gerçek savaş tahmini değildir.<br>Ortak odada kayıt sunucuda; yerel denemede bu tarayıcıda.</p></aside></div></main>
-<footer><span>FRONTIERS / POLS 420 CAPSTONE</span><span>Tasarla → Oyna → Gözlemle → İyileştir</span></footer>
-<dialog id="modal"><div class="modal-top"><span id="modal-label">FRONTIERS LAB</span><button id="close-modal" aria-label="Kapat">✕</button></div><div id="modal-content"></div></dialog><div id="toast" role="status" aria-live="polite"></div><script type="module" src="app.js"></script></body></html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0a07">
+<title>FRONTIERS — Strateji Laboratuvarı</title>
+<meta name="description" content="Altı krallık, sınırlı kaynak. Ekonomi, diplomasi ve fetih: RISK tarzı ortaçağ strateji oyunu. Tek oyunculu ya da arkadaşlarınla çevrim içi.">
+<link rel="icon" type="image/png" href="assets/img/crest-icon.png">
+<link rel="preload" href="assets/img/menu-bg.jpg" as="image">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="menu-bg" class="menu-bg"><div class="bg-img"></div><div class="bg-shade"></div><div class="embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+
+<section id="screen-menu" class="screen menu-screen" aria-label="Ana menü">
+  <div class="menu-left">
+    <div class="logo">
+      <span class="logo-line"></span>
+      <img src="assets/img/crest.png" alt="FRONTIERS arması" width="180" height="194">
+      <span class="logo-line"></span>
+    </div>
+    <h1 class="game-title">FRONTIERS<small>Strateji Laboratuvarı</small></h1>
+    <nav id="main-menu" class="menu-list" aria-label="Ana menü seçenekleri">
+      <button class="menu-btn" data-action="single" style="--scene:url(/game/assets/img/btn-single.jpg)"><span class="mb-icon"></span><span class="mb-label">Tek Oyunculu</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="multi" style="--scene:url(/game/assets/img/btn-multi.jpg)"><span class="mb-icon"></span><span class="mb-label">Çok Oyunculu</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="continue" style="--scene:url(/game/assets/img/btn-continue.jpg)"><span class="mb-icon"></span><span class="mb-label">Devam Et</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="options" style="--scene:url(/game/assets/img/btn-options.jpg)"><span class="mb-icon"></span><span class="mb-label">Seçenekler</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="credits" style="--scene:url(/game/assets/img/btn-credits.jpg)"><span class="mb-icon"></span><span class="mb-label">Krediler</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="exit" style="--scene:url(/game/assets/img/btn-exit.jpg)"><span class="mb-icon"></span><span class="mb-label">Çıkış</span><span class="mb-chev">›</span></button>
+    </nav>
+    <div class="menu-divider" aria-hidden="true"><span></span>⚜<span></span></div>
+    <div class="key-hints"><span><kbd>Enter</kbd> : Seç</span><span><kbd>Esc</kbd> : Geri</span><span class="hide-mobile"><kbd>↑</kbd><kbd>↓</kbd> : Gezin</span></div>
+  </div>
+  <div class="menu-foot">Sürüm 2.0 · <a href="klasik/index.html">Klasik mod (v0.8)</a></div>
+</section>
+
+<section id="screen-panel" class="screen panel-screen" hidden>
+  <div id="panel-card" class="panel-card"></div>
+</section>
+
+<section id="screen-game" class="screen game-screen" hidden aria-label="Oyun">
+  <header class="topbar">
+    <div class="tb-left">
+      <button id="g-menu" class="icon-btn" title="Oyun menüsü" aria-label="Oyun menüsü"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v2.2H3zM3 10.9h18v2.2H3zM3 16.8h18V19H3z"/></svg></button>
+      <div id="tb-player" class="tb-player"></div>
+    </div>
+    <ol id="tb-phases" class="phases" aria-label="Tur aşamaları">
+      <li data-phase="reinforce"><b>1</b><span>Takviye</span></li>
+      <li data-phase="attack"><b>2</b><span>Saldırı</span></li>
+      <li data-phase="fortify"><b>3</b><span>Tahkim</span></li>
+    </ol>
+    <div class="tb-right">
+      <div id="tb-round" class="tb-stat"></div>
+      <div id="tb-gold" class="tb-stat tb-gold"></div>
+      <button id="g-diplo" class="btn btn-small btn-diplo">Diplomasi <span id="diplo-count" class="count" hidden></span></button>
+      <button id="g-score" class="icon-btn" title="Puan tablosu" aria-label="Puan tablosu"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v6a5 5 0 01-10 0z"/><path d="M4 4h3v2H6c0 1.5.8 2.6 2 3l-.6 1.6C5.3 10 4 8.2 4 6zM20 4h-3v2h1c0 1.5-.8 2.6-2 3l.6 1.6C18.7 10 20 8.2 20 6z"/><path d="M11 13.5h2V17h3v4H8v-4h3z"/></svg></button>
+      <button id="g-help" class="icon-btn hide-mobile" title="Nasıl oynanır" aria-label="Nasıl oynanır">?</button>
+      <button id="g-sound" class="icon-btn" title="Sesi aç/kapat" aria-label="Sesi aç/kapat"></button>
+    </div>
+  </header>
+  <div class="game-body">
+    <aside id="players-panel" class="side side-left" aria-label="Krallıklar"></aside>
+    <main class="map-wrap">
+      <div id="map" class="map"></div>
+      <div class="map-tools">
+        <button id="toggle-left" class="icon-btn show-mobile" title="Krallıklar" aria-label="Krallıklar">👥</button>
+        <button id="zoom-in" class="icon-btn" title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
+        <button id="zoom-out" class="icon-btn" title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
+        <button id="zoom-fit" class="icon-btn" title="Tüm harita" aria-label="Tüm harita">⤢</button>
+        <button id="toggle-right" class="icon-btn show-mobile" title="Bilgi" aria-label="Bilgi">ℹ</button>
+      </div>
+      <div id="conn-status" class="conn-status" hidden>Bağlantı koptu · yeniden bağlanılıyor…</div>
+      <div id="turn-banner" class="turn-banner" aria-live="polite"></div>
+      <div id="battle-toast" class="battle-toast" aria-live="polite"></div>
+      <div id="battle-panel" class="battle-panel" hidden aria-live="polite"></div>
+    </main>
+    <aside class="side side-right" aria-label="Bilgi">
+      <section id="hint" class="card hint" aria-live="polite"></section>
+      <section id="region-card" class="card region-card"></section>
+      <section id="mission-card" class="card mission-card"></section>
+      <section class="card log-card"><small>Olay kaydı</small><ol id="log" class="log"></ol></section>
+    </aside>
+  </div>
+  <footer id="actionbar" class="actionbar" aria-label="Aksiyonlar"></footer>
+</section>
+
+<div id="modal" class="modal" hidden></div>
+<div id="tutorial" class="tutorial" hidden></div>
+<div id="end-screen" class="end-screen" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<noscript><p style="color:#fff;padding:2rem">FRONTIERS oynamak için JavaScript gerekir.</p></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
