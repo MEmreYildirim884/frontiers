@@ -8,6 +8,9 @@ import { LocalSession } from './game/local-session.js';
 import { OnlineSession, probeRoom, storedToken, forgetRoom } from './net/online.js';
 import { loadGame, loadSlot, validSave } from './save.js';
 
+// Menü düğmesi arka planları: custom property içinde göreli url() bozulduğu için mutlak adrese çevrilir.
+document.querySelectorAll('[data-scene]').forEach(b => b.style.setProperty('--scene', `url("${new URL(b.dataset.scene, location.href).href}")`));
+
 class App {
   constructor() {
     this.menu = new Menu(this);

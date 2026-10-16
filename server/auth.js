@@ -99,6 +99,9 @@ export class AuthService {
 
   async newSession(u) {
     const token = randomHex(32), now = this.now();
+    // Eski/süresi dolmuş oturumları temizle; bir hesapta en fazla 10 açık oturum kalsın.
+    await this.db.prepare('DELETE FROM sessions WHERE user_id = ? AND expires_at < ?').bind(u.id, now).run();
+    await this.db.prepare('DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT -1 OFFSET 9)').bind(u.id).run();
     await this.db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
       .bind(await sha256(token), u.id, now, now + SESSION_DAYS * 86400_000).run();
     return { token, user: { id: u.id, username: u.username } };
@@ -149,7 +152,8 @@ export class AuthService {
 
   // /api/auth uç noktası.
   async handle(input, token, ip) {
-    check(input && typeof input === 'object', 'Geçersiz istek.');
+    check(input && typeof input === 'object' && !Array.isArray(input), 'Geçersiz istek.');
+    for (const k of ['username', 'password', 'current']) check(input[k] === undefined || typeof input[k] === 'string', 'Geçersiz istek.');
     const op = input.op;
     if (op === 'register') return this.register(input, ip);
     if (op === 'login') return this.login(input, ip);

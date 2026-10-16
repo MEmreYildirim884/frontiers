@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self' https://frontiers-api.frontiers-oyun.workers.dev https://0.peerjs.com wss://0.peerjs.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0d0a07">
 <title>FRONTIERS — Cephe ve Kuşatma</title>
 <meta name="description" content="Altı krallık, on birlik sınıfı, kaleler ve kuşatmalar, ekonomi, ikmal ve diplomasi: 19. yüzyıl esintili Türkçe büyük strateji oyunu.">
@@ -104,7 +106,6 @@
 <div id="end-screen" class="end-screen" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <noscript><p style="color:#fff;padding:2rem">FRONTIERS oynamak için JavaScript gerekir.</p></noscript>
-<script>document.querySelectorAll("[data-scene]").forEach(b=>b.style.setProperty("--scene","url(\""+new URL(b.dataset.scene,location.href).href+"\")"));</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

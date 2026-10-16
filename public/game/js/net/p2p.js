@@ -4,6 +4,7 @@
 import { RoomService } from './room-service.js';
 
 const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+const PEERJS_SRI = 'sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR';
 const PREFIX = 'frontiers3-';
 const HOST_KEY = code => 'frontiers-v3-host-' + code;
 const TIMEOUT = 12000;
@@ -15,6 +16,8 @@ function loadPeer() {
   peerLib = new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = PEERJS; s.async = true;
+    // Bütünlük doğrulaması: CDN'deki dosya değiştirilirse tarayıcı çalıştırmaz.
+    s.integrity = PEERJS_SRI; s.crossOrigin = 'anonymous'; s.referrerPolicy = 'no-referrer';
     s.onload = () => (globalThis.Peer ? res(globalThis.Peer) : rej(new Error('PeerJS yüklenemedi.')));
     s.onerror = () => { peerLib = null; rej(Object.assign(new Error('Bağlantı kütüphanesi yüklenemedi. İnternet bağlantını kontrol et.'), { status: 0 })); };
     document.head.appendChild(s);
@@ -73,8 +76,17 @@ export class HostTransport {
   }
   accept(conn) {
     this.guests.add(conn);
+    let window0 = Date.now(), count = 0;
     conn.on('data', async msg => {
       if (!msg || typeof msg !== 'object' || typeof msg.id !== 'number') return;
+      // Kötüye kullanım sınırı: 12 KB'tan büyük ya da saniyede 20'den fazla istek kabul edilmez.
+      const now = Date.now();
+      if (now - window0 > 1000) { window0 = now; count = 0; }
+      if (++count > 20) return conn.send({ id: msg.id, ok: false, error: 'Çok fazla istek.', status: 429 });
+      let size = 0;
+      try { size = JSON.stringify(msg).length; } catch { size = Infinity; }
+      if (size > 12000) return conn.send({ id: msg.id, ok: false, error: 'İstek çok büyük.', status: 413 });
+      if (!['GET', 'POST'].includes(msg.method)) return;
       try { conn.send({ id: msg.id, ok: true, data: await this.handle(msg.method, msg.opts ?? {}) }); }
       catch (e) { conn.send({ id: msg.id, ok: false, error: e.message || 'İşlem tamamlanamadı.', status: e.status ?? 400 }); }
     });

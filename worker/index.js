@@ -7,7 +7,8 @@ const ORIGINS = new Set(['https://memreyildirim884.github.io', 'http://localhost
 const MAX_BODY = 12000;
 
 function headers(origin) {
-  const h = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
+  const h = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'", 'X-Frame-Options': 'DENY', 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', 'Cross-Origin-Resource-Policy': 'cross-origin' };
   if (ORIGINS.has(origin)) Object.assign(h, { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400', Vary: 'Origin' });
   return h;
 }
@@ -29,12 +30,15 @@ export default {
         return json(await accountRooms(router, auth, 'GET', token, { probe: url.searchParams.get('probe') === '1' }, url.searchParams.get('code')));
       }
       if (request.method !== 'POST') return json({ error: 'Yöntem desteklenmiyor.' }, 405);
+      if (!(request.headers.get('Content-Type') ?? '').includes('application/json')) return json({ error: 'İstek JSON olmalı.' }, 415);
+      if (Number(request.headers.get('Content-Length') ?? 0) > MAX_BODY) return json({ error: 'İstek çok büyük.' }, 413);
       const text = await request.text();
       if (text.length > MAX_BODY) return json({ error: 'İstek çok büyük.' }, 413);
       const input = JSON.parse(text);
       if (url.pathname === '/api/auth') return json(await auth.handle(input, token, ip));
       return json(await accountRooms(router, auth, 'POST', token, input), input.op === 'create' || input.op === 'join' ? 201 : 200);
     } catch (e) {
+      // İç hata ayrıntısı (yığın, SQL) istemciye asla gönderilmez.
       return json({ error: e.status ? e.message : e instanceof SyntaxError ? 'Geçersiz istek.' : 'İşlem tamamlanamadı. Yenileyip tekrar dene.' }, e.status ?? (e instanceof SyntaxError ? 400 : 500));
     }
   },
