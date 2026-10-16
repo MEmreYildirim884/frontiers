@@ -5,7 +5,7 @@ v2.0 RISK modu `/game/risk/`, v0.8 Klasik mod `/game/klasik/` altında çalışm
 
 ## Karar bekleyenler (kullanıcıya sor)
 - [ ] **Müzik telifi:** parçalar Age of Empires II/III film müzikleri ve artık herkese açık GitHub deposunda. Telifsiz parçalarla değiştirilsin mi?
-- [ ] Çevrim içi odalar için sunuculu yayın (Cloudflare Worker ya da başka bir Node sunucusu). GitHub Pages statiktir; şimdilik "Aynı Ekranda" modu var.
+- [ ] P2P odalarda ev sahibi sekmeyi kapatırsa oyun durur; istenirse kalıcı sunucu (Cloudflare) yayını.
 
 ## İyileştirme fikirleri
 - [ ] Denge: gerçek oyuncu geri bildirimiyle birlik fiyat/bakım ince ayarı (`constants.js`, `tools/balance-scenarios.mjs`).

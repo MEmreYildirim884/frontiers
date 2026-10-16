@@ -27,7 +27,7 @@ node tools/ai-sim.mjs 6 24 normal      # 6 yapay zekâlı maç simülasyonu
 python tools/generate-map-v3.py        # haritayı referans görselden yeniden üret
 ```
 
-GitHub Pages: `.github/workflows/pages.yml` testleri çalıştırıp `public/` klasörünü yayınlar.
+GitHub Pages: `.github/workflows/pages.yml` testleri çalıştırıp `public/` klasörünü yayınlar. Sunucu yoksa çevrim içi odalar P2P çalışır (`js/net/p2p.js`): odayı kuranın tarayıcısı oda servisini (`js/net/room-service.js`) çalıştırır, misafirler PeerJS/WebRTC ile bağlanır; ev sahibinin sekmesi açık kalmalı.
 
 ## Kod düzeni
 

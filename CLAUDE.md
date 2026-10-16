@@ -32,7 +32,7 @@ Kullanıcıyla Türkçe konuş. Açık işler ve sıradaki adımlar: `TODO.md`.
   (`newGame({humans:[]})` + `playTurn` döngüsü, kazanan dağılımına bak).
 - Satır içi CSS `url()` custom property'de göreli yol bozulur: `data-scene` + JS ile mutlak URL'ye çevir (index.html sonundaki betik).
 - Ses: müzik `audio.music(liste)`, efekt `audio.sfx(ad)`; çalma listeleri `audio/audio.js` → `PLAYLISTS`.
-- Yayın: GitHub Pages (github.com/MEmreYildirim884/frontiers, `main`'e push → `.github/workflows/pages.yml`). Statik yayında çevrim içi odalar çalışmaz
+- Yayın: GitHub Pages (github.com/MEmreYildirim884/frontiers, `main`e push → `.github/workflows/pages.yml`). Statik yayında çevrim içi odalar P2P (js/net/p2p.js, PeerJS) ile çalışır
   (Aynı Ekranda modu var). Eski ChatGPT Sites yayını `.openai/hosting.json`.
 - Statik yayın alt klasörde (/frontiers/) çalışır: `/game/...` gibi kök yollar KULLANMA; göreli yol ya da `new URL(..., import.meta.url)`.
 - Tarayıcı testi: Chrome (`C:/Program Files/Google/Chrome/Application/chrome.exe`) + puppeteer-core (scratchpad'e kur).
