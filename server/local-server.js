@@ -8,6 +8,7 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 import { RoomRouter, D1Store } from './rooms.js';
+import { AuthService, accountRooms } from './auth.js';
 
 const root = resolve(fileURLToPath(new URL('../public', import.meta.url)));
 const dataDir = resolve(root, '..', '.local-data');
@@ -19,11 +20,14 @@ const d1 = {
   prepare(sql) {
     return { bind(...args) { return {
       async first() { return db.prepare(sql).get(...args) ?? null; },
+      async all() { return { results: db.prepare(sql).all(...args) }; },
       async run() { const r = db.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; },
     }; } };
   },
 };
+db.exec(readFileSync(new URL('../drizzle/0001_accounts.sql', import.meta.url), 'utf8'));
 const router = new RoomRouter(new D1Store(d1));
+const auth = new AuthService(d1);
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
@@ -32,11 +36,18 @@ async function api(req, res, url) {
   const send = (data, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(data)); };
   try {
     const token = (req.headers.authorization ?? '').replace(/^Bearer /, '');
-    if (req.method === 'GET') return send(await router.handle('GET', token, { probe: url.searchParams.get('probe') === '1' }, url.searchParams.get('code')));
+    const ip = req.socket.remoteAddress ?? '?';
+    if (url.pathname === '/api/auth') {
+      if (req.method !== 'POST') return send({ error: 'Yalnızca POST.' }, 405);
+      let body = '';
+      for await (const chunk of req) { body += chunk; if (body.length > 4000) return send({ error: 'İstek çok büyük.' }, 413); }
+      return send(await auth.handle(JSON.parse(body), token, ip));
+    }
+    if (req.method === 'GET') return send(await accountRooms(router, auth, 'GET', token, { probe: url.searchParams.get('probe') === '1' }, url.searchParams.get('code')));
     let body = '';
     for await (const chunk of req) { body += chunk; if (body.length > 12000) return send({ error: 'İstek çok büyük.' }, 413); }
     const input = JSON.parse(body);
-    send(await router.handle('POST', token, input), input.op === 'create' || input.op === 'join' ? 201 : 200);
+    send(await accountRooms(router, auth, 'POST', token, input), input.op === 'create' || input.op === 'join' ? 201 : 200);
   } catch (e) {
     send({ error: e.status ? e.message : e instanceof SyntaxError ? 'Geçersiz istek.' : 'İşlem tamamlanamadı. Yenileyip tekrar dene.' }, e.status ?? (e instanceof SyntaxError ? 400 : 500));
     if (!e.status && !(e instanceof SyntaxError)) console.error(e);
@@ -74,7 +85,7 @@ async function file(req, res, url) {
 const port = Number(process.argv[2] ?? process.env.PORT ?? 8787);
 createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/api/rooms') return api(req, res, url);
+  if (url.pathname === '/api/rooms' || url.pathname === '/api/auth') return api(req, res, url);
   return file(req, res, url);
 }).listen(port, '0.0.0.0', () => {
   console.log(`FRONTIERS hazır: http://localhost:${port}`);

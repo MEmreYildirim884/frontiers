@@ -42,7 +42,10 @@ class App {
       // Klasik (v0.8) odalar eski istemcide açılır.
       if (v === 2) { location.replace('risk/index.html?room=' + code); return; }
       if (v !== 3) { location.replace('klasik/index.html?room=' + code); return; }
-      if (storedToken(code)) return this.enterRoom(await OnlineSession.resume(code));
+      if (storedToken(code)) {
+        try { return this.enterRoom(await OnlineSession.resume(code)); }
+        catch (e) { if (e.status !== 401) throw e; }
+      }
       this.menu.multi(code);
       toast(`Oda ${code} için adını yazıp "Odaya Katıl" de.`, 'info', 5000);
     } catch (e) {

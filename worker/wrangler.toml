@@ -1,0 +1,9 @@
+name = "frontiers-api"
+main = "index.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "frontiers"
+database_id = "BURAYA_DOLDURULACAK"
+migrations_dir = "../drizzle"

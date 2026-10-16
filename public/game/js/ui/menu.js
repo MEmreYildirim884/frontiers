@@ -7,7 +7,8 @@ import { audio } from '../audio/audio.js';
 import { hasSave, clearSave } from '../save.js';
 import { resetTutorial } from './tutorial.js';
 import { openCodex } from './codex.js';
-import { OnlineSession, lastRoom, forgetRoom, isP2P } from '../net/online.js';
+import { OnlineSession, lastRoom, forgetRoom, isP2P, hasServer } from '../net/online.js';
+import { account, login, register, logout, verify, myRooms } from '../net/auth.js';
 
 const TRAITS = [
   'Kuzeybatı. Tepeler ve kıyı; güçlü ağır süvari geleneği.',
@@ -144,14 +145,62 @@ export class Menu {
   }
 
   // ——— Çok oyunculu ———
-  multi(prefillCode = '') {
+  // ——— Giriş / kayıt ———
+  login(prefillCode = '', mode = 'login') {
+    const card = this.openPanel('login', `
+      <header class="ph"><h2>${icon('users')} Komutan Girişi</h2><p>Çok oyunculu oyun hesabınla oynanır: aynı hesapla her cihazdan odalarına dönersin. E-posta gerekmez.</p></header>
+      <div class="tabs" role="tablist"><button role="tab" data-mode="login">Giriş Yap</button><button role="tab" data-mode="register">Hesap Oluştur</button></div>
+      <form id="lg-form" class="login-form" autocomplete="on">
+        <div class="field"><label for="lg-user">Kullanıcı adı</label><input id="lg-user" name="username" maxlength="20" autocomplete="username" autocapitalize="off" spellcheck="false" required placeholder="3–20 karakter: harf, rakam, _"></div>
+        <div class="field"><label for="lg-pass">Şifre</label><input id="lg-pass" name="password" type="password" maxlength="128" required placeholder="En az 8 karakter"></div>
+        <div class="field" data-only="register"><label for="lg-pass2">Şifre (tekrar)</label><input id="lg-pass2" type="password" maxlength="128" autocomplete="new-password" placeholder="Şifreyi tekrar yaz"></div>
+        <label class="ck lg-show"><input type="checkbox" id="lg-show"> Şifreyi göster</label>
+        <p class="muted small" data-only="register">Şifren cihazında saklanmaz; sunucuda yalnızca tuzlanmış özeti (PBKDF2) tutulur. Şifreni unutursan hesap kurtarılamaz, bir yere not et.</p>
+        <button class="btn btn-primary btn-big" id="lg-go" type="submit">Giriş Yap ${icon('arrow')}</button>
+      </form>
+      <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><button class="btn" id="lg-hotseat">${icon('users')} Aynı Ekranda Oyna (hesapsız)</button></footer>`);
+    const sync = () => {
+      $$('[data-mode]', card).forEach(b => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-selected', b.dataset.mode === mode); });
+      $$('[data-only]', card).forEach(e => (e.hidden = e.dataset.only !== mode));
+      $('#lg-pass', card).autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+      $('#lg-go', card).innerHTML = `${mode === 'login' ? 'Giriş Yap' : 'Hesabı Oluştur'} ${icon('arrow')}`;
+    };
+    $$('[data-mode]', card).forEach(b => (b.onclick = () => { mode = b.dataset.mode; audio.sfx('click'); sync(); }));
+    $('#lg-show', card).onchange = e => { for (const id of ['#lg-pass', '#lg-pass2']) $(id, card).type = e.target.checked ? 'text' : 'password'; };
+    $('#lg-hotseat', card).onclick = () => { audio.sfx('click'); this.single(true); };
+    $('#lg-form', card).onsubmit = async e => {
+      e.preventDefault();
+      const btn = $('#lg-go', card);
+      if (btn.disabled) return;
+      const u = $('#lg-user', card).value.trim(), p = $('#lg-pass', card).value;
+      if (mode === 'register' && p !== $('#lg-pass2', card).value) { toast('Şifreler aynı değil.', 'warn'); return; }
+      btn.disabled = true;
+      try {
+        const user = mode === 'login' ? await login(u, p) : await register(u, p);
+        audio.sfx('conquer');
+        toast(mode === 'login' ? `Hoş geldin, ${user.username}!` : `Hesabın oluşturuldu. Hoş geldin, ${user.username}!`, 'good');
+        this.multi(prefillCode);
+      } catch (err) { audio.sfx('error'); toast(err.message, 'error', 5000); $('#lg-pass', card).value = ''; $('#lg-pass2', card).value = ''; $('#lg-pass', card).focus(); }
+      finally { btn.disabled = false; }
+    };
+    sync();
+    $('#lg-user', card).focus();
+    audio.music('lobby');
+  }
+
+  async multi(prefillCode = '') {
+    const server = await hasServer();
+    if (server && !account()) return this.login(prefillCode);
+    if (server) { const u = await verify(); if (!u) { toast('Oturumun sona erdi; tekrar giriş yap.', 'warn'); return this.login(prefillCode); } }
+    const acc = server ? account() : null;
     const last = lastRoom();
     let tab = prefillCode ? 'join' : 'create';
     const card = this.openPanel('multi', `
       <header class="ph"><h2>${icon('swords')} Çok Oyunculu</h2><p>Arkadaşlarınla aynı haritada savaş. Herkes kendi cihazından bağlanır, boş kalan ülkeleri yapay zekâ oynar.</p></header>
       ${last ? `<button class="btn resume-room" id="m-last">${icon('play')} Son odana dön: <b>${esc(last)}</b></button>` : ''}
       <div class="tabs" role="tablist"><button role="tab" data-tab="create">Oda Kur</button><button role="tab" data-tab="join">Odaya Katıl</button></div>
-      <div class="field"><label for="m-name">Komutan adın</label><input id="m-name" maxlength="24" placeholder="Örn. Egemen" value="${esc(savedName())}" autocomplete="nickname"></div>
+      ${acc ? `<div class="acc-bar">${icon('users')} Komutan: <b>${esc(acc.username)}</b><button class="btn btn-small" id="m-logout">Çıkış Yap</button></div><div id="m-rooms" class="my-rooms"></div>`
+        : `<div class="field"><label for="m-name">Komutan adın</label><input id="m-name" maxlength="24" placeholder="Örn. Egemen" value="${esc(savedName())}" autocomplete="nickname"></div>`}
       <div class="tab-body" data-body="create">
         <div class="opts">
           <div class="field"><label for="m-rounds">Oyun süresi</label><select id="m-rounds">${ROUND_OPTIONS.map(o => `<option value="${o.value}" ${o.value === 24 ? 'selected' : ''}>${o.label}</option>`).join('')}</select></div>
@@ -163,7 +212,7 @@ export class Menu {
         <div class="field"><label for="m-code">Oda kodu</label><input id="m-code" class="code-input" maxlength="8" placeholder="ABCD1234" value="${esc(prefillCode)}" autocomplete="off" spellcheck="false"></div>
         <button class="btn btn-primary btn-big" id="m-join">Odaya Katıl ${icon('arrow')}</button>
       </div>
-      <p class="note">Sunucu gerekmez: odayı kuranın tarayıcısı oyunu yönetir, arkadaşların davet bağlantısıyla doğrudan ona bağlanır. <b>Odayı kuranın oyun sekmesi açık kalmalı.</b> Aynı bilgisayarda oynamak için <b>Aynı Ekranda</b> modu da var.</p>
+      <p class="note">${acc ? 'Odalar hesabına bağlıdır: oyunu kapatıp başka bir cihazdan aynı hesapla girersen kaldığın yerden devam edersin.' : 'Hesap sunucusuna ulaşılamadı: misafir modu. Odayı kuranın tarayıcısı oyunu yönetir, arkadaşların davet bağlantısıyla doğrudan ona bağlanır; <b>odayı kuranın sekmesi açık kalmalı.</b>'}</p>
       <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><button class="btn" id="m-hotseat">${icon('users')} Aynı Ekranda Oyna</button><span class="muted small">Sıra kimdeyse yalnızca o oynar; diğerleri canlı izler.</span></footer>`);
     $('#m-hotseat', card).onclick = () => { audio.sfx('click'); this.single(true); };
     const sync = () => {
@@ -172,7 +221,17 @@ export class Menu {
     };
     $$('[data-tab]', card).forEach(b => (b.onclick = () => { tab = b.dataset.tab; audio.sfx('click'); sync(); }));
     sync();
+    if (acc) {
+      $('#m-logout', card).onclick = async () => { audio.sfx('click'); await logout(); toast('Çıkış yapıldı.', 'info'); this.login(); };
+      myRooms().then(list => {
+        const el = $('#m-rooms', card);
+        if (!el || !list.length) return;
+        el.innerHTML = `<small>Odaların</small>${list.slice(0, 6).map(r => `<button class="btn btn-small" data-room="${esc(r.code)}">${icon('play')} ${esc(r.code)}</button>`).join('')}`;
+        $$('[data-room]', el).forEach(b => (b.onclick = () => busy(b, async () => this.app.enterRoom(await OnlineSession.resume(b.dataset.room)))));
+      }).catch(() => {});
+    }
     const name = () => {
+      if (acc) return acc.username;
       const n = $('#m-name', card).value.trim();
       if (!n) { toast('Önce komutan adını yaz.', 'warn'); $('#m-name', card).focus(); return null; }
       rememberName(n);
@@ -202,7 +261,7 @@ export class Menu {
       try { this.app.enterRoom(await OnlineSession.resume(last)); }
       catch (err) { if (err.status === 401 || err.status === 404) forgetRoom(last); throw err; }
     });
-    (prefillCode ? $('#m-name', card) : $('#m-name', card)).focus();
+    $('#m-name', card)?.focus();
     audio.music('lobby');
   }
 

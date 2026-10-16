@@ -109,7 +109,7 @@ kbd { font-family: var(--font-title); font-size: .8rem; border: 1px solid var(--
 .opts > * { flex: 1 1 260px; }
 .field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
 .field label { font-family: var(--font-title); font-size: .85rem; color: var(--gold); letter-spacing: .05em; }
-input[type=text], input:not([type]), select { background: rgba(0, 0, 0, .45); border: 1px solid var(--gold-lo); border-radius: var(--radius); padding: 10px 12px; color: var(--ink); min-height: 44px; }
+input[type=text], input[type=password], input[type=number], input:not([type]), select { background: rgba(0, 0, 0, .45); border: 1px solid var(--gold-lo); border-radius: var(--radius); padding: 10px 12px; color: var(--ink); min-height: 44px; }
 input:focus, select:focus { border-color: var(--gold-hi); outline: none; box-shadow: 0 0 0 3px rgba(212, 175, 55, .2); }
 select option { background: #1a120b; }
 .code-input { font-family: var(--font-title); font-size: 1.4rem !important; letter-spacing: .3em; text-transform: uppercase; text-align: center; }

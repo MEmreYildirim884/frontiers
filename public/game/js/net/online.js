@@ -1,19 +1,21 @@
 // Çevrim içi oda istemcisi: sunucuya komut gönderir, 1,5 saniyede bir güncel durumu çeker.
 // Oyuncu kimliği (token) yalnızca bu tarayıcıda saklanır; aynı tarayıcıyla geri dönen oyuncu kaldığı yerden devam eder.
-// Statik yayında (ör. GitHub Pages) alt klasörde çalışılsa da API sitenin kökündedir.
-const API = new URL('/api/rooms', location.origin).href;
+// Hesaplı modda (sunucu varsa) oyuncu kimliği hesabın oturumudur: aynı hesapla her cihazdan odaya dönülür.
 import { HostTransport, GuestTransport, hostedRoom } from './p2p.js';
+import { API_ORIGIN } from './config.js';
+import { account } from './auth.js';
+const API = API_ORIGIN + '/api/rooms';
 const POLL_MS = 1500;
 const tokenKey = code => 'frontiers-v3-room-' + code;
 const LAST_KEY = 'frontiers-v3-last-room';
 
-export const storedToken = code => { try { return localStorage.getItem(tokenKey(code)); } catch { return null; } };
+export const storedToken = code => { if (serverOk && account()) return account().token; try { return localStorage.getItem(tokenKey(code)); } catch { return null; } };
 export const lastRoom = () => { try { const c = localStorage.getItem(LAST_KEY); return c && storedToken(c) ? c : null; } catch { return null; } };
 export function forgetRoom(code) { try { localStorage.removeItem(tokenKey(code)); if (localStorage.getItem(LAST_KEY) === code) localStorage.removeItem(LAST_KEY); } catch { /* yok say */ } }
 
 // Sunucu var mı? (statik yayında /api/rooms yoktur → tarayıcıdan tarayıcıya P2P odalar kullanılır)
 let serverOk = null;
-async function hasServer() {
+export async function hasServer() {
   if (serverOk !== null) return serverOk;
   try {
     const r = await fetch(`${API}?code=00000000&probe=1`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
@@ -77,18 +79,21 @@ export class OnlineSession {
     this.timer = null;
     this.queue = Promise.resolve();
     this.closed = false;
-    try { localStorage.setItem(tokenKey(this.code), token); localStorage.setItem(LAST_KEY, this.code); } catch { /* yok say */ }
+    try { if (!view.account) localStorage.setItem(tokenKey(this.code), token); localStorage.setItem(LAST_KEY, this.code); } catch { /* yok say */ }
   }
 
   static async create(name, config) {
-    const v = await request('POST', { input: { op: 'create', name, config } });
-    return new OnlineSession(v, v.token);
+    const acc = (await hasServer()) ? account() : null;
+    const v = await request('POST', { token: acc?.token, input: { op: 'create', name: acc?.username ?? name, config } });
+    return new OnlineSession(v, acc?.token ?? v.token);
   }
   static async join(code, name) {
-    const v = await request('POST', { input: { op: 'join', code, name } });
-    return new OnlineSession(v, v.token);
+    const acc = (await hasServer()) ? account() : null;
+    const v = await request('POST', { token: acc?.token, input: { op: 'join', code, name: acc?.username ?? name } });
+    return new OnlineSession(v, acc?.token ?? v.token);
   }
   static async resume(code) {
+    await hasServer();
     const token = storedToken(code);
     if (!token) throw Object.assign(new Error('Bu odaya bu tarayıcıdan katılmamışsın.'), { status: 401 });
     const v = await request('GET', { code, token });
