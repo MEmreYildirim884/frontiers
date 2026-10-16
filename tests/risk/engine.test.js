@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as G from '../public/game/js/rules/index.js';
+import * as G from '../../public/game/risk/js/rules/index.js';
 
 const fresh = (opts = {}) => G.newGame({ humans: [0], shuffleOrder: false, ...opts }, G.makeRng(7));
 // Sırası gelen oyuncunun kalan askerlerini ilk bölgesine koyar.

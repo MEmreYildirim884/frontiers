@@ -1,20 +1,21 @@
 // Menüler: ana menü, tek oyunculu kurulum, çok oyunculu, lobi, seçenekler, krediler, çıkış.
-import { KINGDOMS, DIFFICULTIES, ROUND_OPTIONS, KINGDOM_BONUS, kingdomRegions } from '../rules/index.js';
+import { KINGDOMS, DIFFICULTIES, ROUND_OPTIONS, kingdomRegions, META } from '../rules/index.js';
 import { $, $$, esc, toast, confirmBox } from './dom.js';
-import { shield } from './heraldry.js';
 import { icon } from './icons.js';
+import { flagUrl, portraitUrl } from './art.js';
 import { audio } from '../audio/audio.js';
 import { hasSave, clearSave } from '../save.js';
 import { resetTutorial } from './tutorial.js';
+import { openCodex } from './codex.js';
 import { OnlineSession, lastRoom, forgetRoom } from '../net/online.js';
 
 const TRAITS = [
-  'Kuzeybatı köşesi. Az sınır, korunaklı bir ada limanı.',
-  'Kuzeyin kalbi. Zengin madenler ama üç cepheye açık.',
-  'Kuzeydoğu dağları. Sarp kıyılar ve gümüş koy.',
-  'Batı ormanları. Sakin sınırlar, güçlü liman.',
-  'Güneyin altın tarlaları. En geniş topraklar, en çok komşu.',
-  'Güneydoğu bozkırı. Fener Adası ile denize açılır.',
+  'Kuzeybatı. Tepeler ve kıyı; güçlü ağır süvari geleneği.',
+  'Kuzeyin dağlık kalbi. Madenler ve topçu; üç cepheye açık.',
+  'Kuzeydoğu dağları ve fiyortları. Sarp, savunması kolay.',
+  'Batı ormanları ve limanları. Avcı piyade ve iaşe ustaları.',
+  'Güneyin altın tarlaları. En zengin ekonomi, en çok komşu.',
+  'Güneydoğu bozkırı ve çölü. Akıncı süvari, sert iklim.',
 ];
 const NAME_KEY = 'frontiers-v2-name';
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) ?? ''; } catch { return ''; } };
@@ -90,36 +91,56 @@ export class Menu {
     return card;
   }
 
-  // ——— Tek oyunculu ———
-  single() {
-    let pick = 0, diff = 'normal', rounds = 15;
+  // ——— Tek oyunculu / aynı ekranda ———
+  single(hotseat = false) {
+    let pick = 0, seats = hotseat, diff = 'normal', rounds = 24;
+    const picks = new Set([0, 1]);
     const card = this.openPanel('single', `
-      <header class="ph"><h2>${icon('sword')} Tek Oyunculu</h2><p>Yapay zekâ yönetimindeki beş krallığa karşı savaş.</p></header>
-      <h3 class="sub">Krallığını seç</h3>
-      <div class="kingdom-grid" role="radiogroup" aria-label="Krallık">${KINGDOMS.map(k => `
-        <button class="kingdom-card" role="radio" data-k="${k.id}" style="--c:${k.color}">
-          ${shield(k.id, { size: 58 })}<b>${k.full}</b><small>${kingdomRegions(k.id).length} bölge · bonus +${KINGDOM_BONUS[k.id]}</small><em>${TRAITS[k.id]}</em>
+      <header class="ph"><h2>${icon('sword')} Yeni Sefer</h2><p>1815. Altı devlet, on birlik sınıfı, kaleler, ikmal hatları ve kırılgan bir barış.</p></header>
+      <div class="tabs" role="tablist"><button role="tab" data-mode="0">Tek Oyunculu</button><button role="tab" data-mode="1">Aynı Ekranda (2–6 oyuncu)</button></div>
+      <h3 class="sub" id="s-pick-label">Devletini seç</h3>
+      <div class="kingdom-grid k3" role="radiogroup" aria-label="Devlet">${KINGDOMS.map(k => `
+        <button class="kingdom-card k3card" role="radio" data-k="${k.id}" style="--c:${k.color}">
+          <span class="k3-art" style="background-image:url('${portraitUrl(k.id, 'scene')}')"></span>
+          <img class="k3-flag" src="${flagUrl(k.id)}" alt="" width="96" height="64">
+          <b>${k.full}</b><small>${kingdomRegions(k.id).length} bölge · başkent ${esc(META.find(m => m.kingdom === k.id && m.type === 'capital')?.name ?? '')}</small>
+          <em>${TRAITS[k.id]}</em>
+          <ul class="k3-traits">${k.traits.map(t => `<li class="${t.bad ? 'bad' : 'good'}">${t.bad ? '▼' : '▲'} ${esc(t.name)}: ${esc(t.desc.replace(/^Dezavantaj: /, ''))}</li>`).join('')}</ul>
+          <span class="k3-check">✓</span>
         </button>`).join('')}</div>
       <div class="opts">
-        <div><h3 class="sub">Zorluk</h3><div class="seg" id="s-diff">${Object.entries(DIFFICULTIES).map(([v, d]) => `<button data-v="${v}">${d.name}</button>`).join('')}</div></div>
+        <div><h3 class="sub">Zorluk</h3><div class="seg" id="s-diff">${Object.entries(DIFFICULTIES).map(([v, d]) => `<button data-v="${v}">${d.name}</button>`).join('')}</div><p class="muted small">Zorluk yapay zekânın karar kalitesini değiştirir; hile yoktur.</p></div>
         <div><h3 class="sub">Oyun süresi</h3><div class="seg" id="s-rounds">${ROUND_OPTIONS.map(o => `<button data-v="${o.value}">${o.label}</button>`).join('')}</div></div>
       </div>
-      <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><button class="btn btn-primary btn-big" id="s-start">Sefere Başla ${icon('arrow')}</button></footer>`, 'wide');
+      <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><button class="btn" id="s-codex">${icon('book')} Birlik Rehberi</button><button class="btn btn-primary btn-big" id="s-start">Sefere Başla ${icon('arrow')}</button></footer>`, 'wide');
     const sync = () => {
-      $$('.kingdom-card', card).forEach(b => { b.classList.toggle('on', +b.dataset.k === pick); b.setAttribute('aria-checked', +b.dataset.k === pick); });
+      $$('[data-mode]', card).forEach(b => { b.classList.toggle('on', +b.dataset.mode === +seats); b.setAttribute('aria-selected', +b.dataset.mode === +seats); });
+      $('#s-pick-label', card).textContent = seats ? `Oyuncu devletlerini seç (${picks.size} seçili) — diğerlerini yapay zekâ oynar` : 'Devletini seç';
+      $$('.kingdom-card', card).forEach(b => { const on = seats ? picks.has(+b.dataset.k) : +b.dataset.k === pick; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
       $$('#s-diff button', card).forEach(b => b.classList.toggle('on', b.dataset.v === diff));
       $$('#s-rounds button', card).forEach(b => b.classList.toggle('on', +b.dataset.v === rounds));
     };
-    $$('.kingdom-card', card).forEach(b => (b.onclick = () => { pick = +b.dataset.k; audio.sfx('click'); sync(); }));
+    $$('[data-mode]', card).forEach(b => (b.onclick = () => { seats = !!+b.dataset.mode; audio.sfx('click'); sync(); }));
+    $$('.kingdom-card', card).forEach(b => (b.onclick = () => {
+      const k = +b.dataset.k;
+      if (seats) {
+        if (!picks.has(k)) picks.add(k);
+        else if (picks.size > 2) picks.delete(k);
+        else toast('Aynı ekranda en az 2 oyuncu gerekir.', 'info');
+      } else pick = k;
+      audio.sfx('click'); sync();
+    }));
     $$('#s-diff button', card).forEach(b => (b.onclick = () => { diff = b.dataset.v; audio.sfx('click'); sync(); }));
     $$('#s-rounds button', card).forEach(b => (b.onclick = () => { rounds = +b.dataset.v; audio.sfx('click'); sync(); }));
+    $('#s-codex', card).onclick = () => openCodex(null, 'units');
     $('#s-start', card).onclick = async () => {
       audio.sfx('click');
-      if (hasSave() && !(await confirmBox('Yeni oyun', 'Kayıtlı oyunun silinecek. Yeni sefere başlamak istiyor musun?', 'Yeni Oyun'))) return;
-      this.app.startSingle({ me: pick, difficulty: diff, maxRounds: rounds });
+      if (hasSave() && !(await confirmBox('Yeni oyun', 'Otomatik kayıttaki oyunun silinecek (elle kayıt yuvaları korunur). Yeni sefere başlamak istiyor musun?', 'Yeni Oyun'))) return;
+      const humans = seats ? [...picks].sort((a, b) => a - b) : [pick];
+      this.app.startSingle({ me: humans[0], humans, difficulty: diff, maxRounds: rounds });
     };
     sync();
-    $('.kingdom-card.on', card).focus();
+    $('.kingdom-card.on', card)?.focus();
   }
 
   // ——— Çok oyunculu ———
@@ -133,7 +154,7 @@ export class Menu {
       <div class="field"><label for="m-name">Komutan adın</label><input id="m-name" maxlength="24" placeholder="Örn. Egemen" value="${esc(savedName())}" autocomplete="nickname"></div>
       <div class="tab-body" data-body="create">
         <div class="opts">
-          <div class="field"><label for="m-rounds">Oyun süresi</label><select id="m-rounds">${ROUND_OPTIONS.map(o => `<option value="${o.value}" ${o.value === 15 ? 'selected' : ''}>${o.label}</option>`).join('')}</select></div>
+          <div class="field"><label for="m-rounds">Oyun süresi</label><select id="m-rounds">${ROUND_OPTIONS.map(o => `<option value="${o.value}" ${o.value === 24 ? 'selected' : ''}>${o.label}</option>`).join('')}</select></div>
           <div class="field"><label for="m-diff">Yapay zekâ zorluğu</label><select id="m-diff">${Object.entries(DIFFICULTIES).map(([v, d]) => `<option value="${v}" ${v === 'normal' ? 'selected' : ''}>${d.name}</option>`).join('')}</select></div>
         </div>
         <button class="btn btn-primary btn-big" id="m-create">Oda Kur ${icon('arrow')}</button>
@@ -142,7 +163,9 @@ export class Menu {
         <div class="field"><label for="m-code">Oda kodu</label><input id="m-code" class="code-input" maxlength="8" placeholder="ABCD1234" value="${esc(prefillCode)}" autocomplete="off" spellcheck="false"></div>
         <button class="btn btn-primary btn-big" id="m-join">Odaya Katıl ${icon('arrow')}</button>
       </div>
-      <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><span class="muted small">Sıra kimdeyse yalnızca o oynar; diğerleri canlı izler. Bağlantın koparsa aynı tarayıcıyla geri dönebilirsin.</span></footer>`);
+      <p class="note">Çevrim içi odalar oyun sunucusuyla çalışır (<code>npm run local</code> ya da Cloudflare sürümü). GitHub Pages gibi statik yayında sunucu yoktur: arkadaşlarınla aynı bilgisayarda <b>Aynı Ekranda</b> modunu kullan.</p>
+      <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><button class="btn" id="m-hotseat">${icon('users')} Aynı Ekranda Oyna</button><span class="muted small">Sıra kimdeyse yalnızca o oynar; diğerleri canlı izler.</span></footer>`);
+    $('#m-hotseat', card).onclick = () => { audio.sfx('click'); this.single(true); };
     const sync = () => {
       $$('[data-tab]', card).forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', b.dataset.tab === tab); });
       $$('[data-body]', card).forEach(b => (b.hidden = b.dataset.body !== tab));
@@ -199,7 +222,7 @@ export class Menu {
         const p = v.players.find(x => x.seat === k.id);
         const mine = p?.id === v.me;
         return `<button class="kingdom-card ${mine ? 'on' : ''} ${p && !mine ? 'taken' : ''}" data-seat="${k.id}" style="--c:${k.color}" ${p && !mine ? 'disabled' : ''}>
-          ${shield(k.id, { size: 46 })}<b>${k.name}</b>
+          <img class="k3-flag" src="${flagUrl(k.id)}" alt="" width="72" height="48"><b>${k.name}</b>
           <small>${p ? `${esc(p.name)}${p.id === v.host ? ' 👑' : ''} ${p.ready ? '<span class="good">✓ Hazır</span>' : '<span class="muted">bekliyor</span>'}` : '<span class="muted">Yapay Zekâ</span>'}</small></button>`;
       }).join('')}</div>
       <div class="opts lobby-opts">
@@ -266,13 +289,13 @@ export class Menu {
     this.openPanel('credits', `
       <header class="ph"><h2>${icon('book')} Krediler</h2></header>
       <div class="credits">
-        <h3>FRONTIERS — Strateji Laboratuvarı</h3><p>Sürüm 2.0 · POLS 420 Capstone projesi</p>
+        <h3>FRONTIERS — Cephe ve Kuşatma</h3><p>Sürüm 3.0 · POLS 420 Capstone projesi</p>
         <h4>Oyun tasarımı ve geliştirme</h4><p>Muhammed Emre Yıldırım ve FRONTIERS ekibi</p>
         <h4>Müzik</h4><p>Stephen Rippy & David Rippy — <i>Age of Empires II: The Age of Kings</i> ve <i>Age of Empires III</i> film müzikleri<br>
           <small>Noddinagushpa (Main Title) · Shamburger · I Will Beat on Your Behind · Drizzle · Machina del Diablo · T Station. Tüm hakları sahiplerine aittir.</small></p>
-        <h4>Görseller</h4><p>Ana menü savaş sahnesi ve arma: proje sahibinin sağladığı görseller. Harita, krallık armaları, simgeler ve efekt sesleri oyun için üretildi.</p>
+        <h4>Görseller</h4><p>Boyalı dünya haritası, sancaklar ve ordu tabloları: proje sahibinin sağladığı referans görseller. Birlik figürleri, kale ve şehir modelleri, simgeler ve efekt sesleri oyun için üretildi.</p>
         <h4>Yazı tipleri</h4><p>Cinzel (Natanael Gama) · Alegreya Sans (Huerta Tipográfica) — SIL Open Font License</p>
-        <h4>Esin kaynağı</h4><p>Klasik RISK masa oyunu. Önceki sürüm (v0.8) <a href="klasik/index.html">Klasik mod</a> olarak oynanabilir.</p>
+        <h4>Esin kaynağı</h4><p>Risk, Total War, Europa Universalis ve Hearts of Iron gibi strateji oyunları; hiçbirinin kopyası değildir. Önceki sürümler: <a href="risk/index.html">RISK modu (v2.0)</a> · <a href="klasik/index.html">Klasik mod (v0.8)</a>.</p>
       </div>
       <footer class="pf"><button class="btn btn-primary" data-back>${icon('arrow', 'flip')} Geri</button></footer>`);
     audio.music('credits');

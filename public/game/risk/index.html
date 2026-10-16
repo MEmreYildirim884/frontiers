@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0a07">
+<title>FRONTIERS — RISK Modu (v2.0)</title>
+<meta name="description" content="Altı krallık, sınırlı kaynak. Ekonomi, diplomasi ve fetih: RISK tarzı ortaçağ strateji oyunu. Tek oyunculu ya da arkadaşlarınla çevrim içi.">
+<link rel="icon" type="image/png" href="assets/img/crest-icon.png">
+<link rel="preload" href="assets/img/menu-bg.jpg" as="image">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="menu-bg" class="menu-bg"><div class="bg-img"></div><div class="bg-shade"></div><div class="embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+
+<section id="screen-menu" class="screen menu-screen" aria-label="Ana menü">
+  <div class="menu-left">
+    <div class="logo">
+      <span class="logo-line"></span>
+      <img src="assets/img/crest.png" alt="FRONTIERS arması" width="180" height="194">
+      <span class="logo-line"></span>
+    </div>
+    <h1 class="game-title">FRONTIERS<small>Strateji Laboratuvarı</small></h1>
+    <nav id="main-menu" class="menu-list" aria-label="Ana menü seçenekleri">
+      <button class="menu-btn" data-action="single" data-scene="assets/img/btn-single.jpg"><span class="mb-icon"></span><span class="mb-label">Tek Oyunculu</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="multi" data-scene="assets/img/btn-multi.jpg"><span class="mb-icon"></span><span class="mb-label">Çok Oyunculu</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="continue" data-scene="assets/img/btn-continue.jpg"><span class="mb-icon"></span><span class="mb-label">Devam Et</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="options" data-scene="assets/img/btn-options.jpg"><span class="mb-icon"></span><span class="mb-label">Seçenekler</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="credits" data-scene="assets/img/btn-credits.jpg"><span class="mb-icon"></span><span class="mb-label">Krediler</span><span class="mb-chev">›</span></button>
+      <button class="menu-btn" data-action="exit" data-scene="assets/img/btn-exit.jpg"><span class="mb-icon"></span><span class="mb-label">Çıkış</span><span class="mb-chev">›</span></button>
+    </nav>
+    <div class="menu-divider" aria-hidden="true"><span></span>⚜<span></span></div>
+    <div class="key-hints"><span><kbd>Enter</kbd> : Seç</span><span><kbd>Esc</kbd> : Geri</span><span class="hide-mobile"><kbd>↑</kbd><kbd>↓</kbd> : Gezin</span></div>
+  </div>
+  <div class="menu-foot">Sürüm 2.0 · <a href="../klasik/index.html">Klasik mod (v0.8)</a></div>
+</section>
+
+<section id="screen-panel" class="screen panel-screen" hidden>
+  <div id="panel-card" class="panel-card"></div>
+</section>
+
+<section id="screen-game" class="screen game-screen" hidden aria-label="Oyun">
+  <header class="topbar">
+    <div class="tb-left">
+      <button id="g-menu" class="icon-btn" title="Oyun menüsü" aria-label="Oyun menüsü"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v2.2H3zM3 10.9h18v2.2H3zM3 16.8h18V19H3z"/></svg></button>
+      <div id="tb-player" class="tb-player"></div>
+    </div>
+    <ol id="tb-phases" class="phases" aria-label="Tur aşamaları">
+      <li data-phase="reinforce"><b>1</b><span>Takviye</span></li>
+      <li data-phase="attack"><b>2</b><span>Saldırı</span></li>
+      <li data-phase="fortify"><b>3</b><span>Tahkim</span></li>
+    </ol>
+    <div class="tb-right">
+      <div id="tb-round" class="tb-stat"></div>
+      <div id="tb-gold" class="tb-stat tb-gold"></div>
+      <button id="g-diplo" class="btn btn-small btn-diplo">Diplomasi <span id="diplo-count" class="count" hidden></span></button>
+      <button id="g-score" class="icon-btn" title="Puan tablosu" aria-label="Puan tablosu"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v6a5 5 0 01-10 0z"/><path d="M4 4h3v2H6c0 1.5.8 2.6 2 3l-.6 1.6C5.3 10 4 8.2 4 6zM20 4h-3v2h1c0 1.5-.8 2.6-2 3l.6 1.6C18.7 10 20 8.2 20 6z"/><path d="M11 13.5h2V17h3v4H8v-4h3z"/></svg></button>
+      <button id="g-help" class="icon-btn hide-mobile" title="Nasıl oynanır" aria-label="Nasıl oynanır">?</button>
+      <button id="g-sound" class="icon-btn" title="Sesi aç/kapat" aria-label="Sesi aç/kapat"></button>
+    </div>
+  </header>
+  <div class="game-body">
+    <aside id="players-panel" class="side side-left" aria-label="Krallıklar"></aside>
+    <main class="map-wrap">
+      <div id="map" class="map"></div>
+      <div class="map-tools">
+        <button id="toggle-left" class="icon-btn show-mobile" title="Krallıklar" aria-label="Krallıklar">👥</button>
+        <button id="zoom-in" class="icon-btn" title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
+        <button id="zoom-out" class="icon-btn" title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
+        <button id="zoom-fit" class="icon-btn" title="Tüm harita" aria-label="Tüm harita">⤢</button>
+        <button id="toggle-right" class="icon-btn show-mobile" title="Bilgi" aria-label="Bilgi">ℹ</button>
+      </div>
+      <div id="conn-status" class="conn-status" hidden>Bağlantı koptu · yeniden bağlanılıyor…</div>
+      <div id="turn-banner" class="turn-banner" aria-live="polite"></div>
+      <div id="battle-toast" class="battle-toast" aria-live="polite"></div>
+      <div id="battle-panel" class="battle-panel" hidden aria-live="polite"></div>
+    </main>
+    <aside class="side side-right" aria-label="Bilgi">
+      <section id="hint" class="card hint" aria-live="polite"></section>
+      <section id="region-card" class="card region-card"></section>
+      <section id="mission-card" class="card mission-card"></section>
+      <section class="card log-card"><small>Olay kaydı</small><ol id="log" class="log"></ol></section>
+    </aside>
+  </div>
+  <footer id="actionbar" class="actionbar" aria-label="Aksiyonlar"></footer>
+</section>
+
+<div id="modal" class="modal" hidden></div>
+<div id="tutorial" class="tutorial" hidden></div>
+<div id="end-screen" class="end-screen" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<noscript><p style="color:#fff;padding:2rem">FRONTIERS oynamak için JavaScript gerekir.</p></noscript>
+<script>document.querySelectorAll("[data-scene]").forEach(b=>b.style.setProperty("--scene","url(\""+new URL(b.dataset.scene,location.href).href+"\")"));</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

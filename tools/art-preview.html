@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRONTIERS — art.js önizleme</title>
+<link rel="stylesheet" href="../public/game/css/art.css">
+<style>
+  body { margin: 0; padding: 16px; background: #2a2219; color: #f1e4c4; font: 13px/1.4 Georgia, serif; }
+  h2 { margin: 22px 0 8px; font-size: 18px; color: #e6c26a; border-bottom: 1px solid #6b5230; }
+  .grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cell { background: #d9c8a0; border-radius: 6px; padding: 4px; color: #2a1d10; text-align: center; font-size: 11px; }
+  .cell.dark { background: #1d1610; color: #e6c26a; }
+  .cell svg { display: block; }
+  section { margin-bottom: 18px; }
+  button { font: inherit; padding: 6px 14px; background: #6b4a2b; color: #fff; border: 1px solid #e6c26a; border-radius: 4px; cursor: pointer; }
+  body.static .art-flash { animation: none !important; opacity: 1 !important; }
+  body.static .art-smoke { animation: none !important; opacity: .45 !important; }
+  body.static .art-march, body.static .art-fire { animation: none !important; }
+</style>
+</head>
+<body>
+<h1>FRONTIERS · art.js önizleme</h1>
+<div id="root"></div>
+<script type="module">
+import * as A from '../public/game/js/ui/art.js';
+const q = new URLSearchParams(location.search);
+if (q.has('static')) document.body.classList.add('static');
+const only = q.get('s');
+const Z = +(q.get('z') || 1);
+const root = document.getElementById('root');
+const svg = (inner, vb, w, h, label, dark) => `<div class="cell${dark ? ' dark' : ''}"><svg viewBox="${vb}" width="${w * Z}" height="${h * Z}">${inner}</svg>${label ? `<div>${label}</div>` : ''}</div>`;
+const sect = (id, title, html) => { if (only && only !== id) return; root.insertAdjacentHTML('beforeend', `<section id="${id}"><h2>${title}</h2>${html}</section>`); };
+const K = q.has('k') ? q.get('k').split(',').map(Number) : [0, 1, 2, 3, 4, 5];
+
+// custom expression (debug): ?s=expr&e=<js returning svg markup>&vb=x y w h
+if (q.get('e')) {
+  const vb = (q.get('vb') || '-40 -40 80 50').split(' ').map(Number);
+  const f = new Function('A', 'return ' + q.get('e'));
+  sect('expr', 'expr', svg(f(A), vb.join(' '), vb[2] * 10 * Z, vb[3] * 10 * Z, ''));
+}
+// units: one row per kingdom per pose
+for (const pose of ['stand', 'march', 'fire']) {
+  let html = '';
+  for (const k of K) {
+    let row = '';
+    A.UNIT_TYPES.forEach((t, i) => {
+      const w = ['hussar', 'cuirassier', 'siege'].includes(t) ? 30 : ['field'].includes(t) ? 24 : 16;
+      row += `<g transform="translate(${i * 0 } 0)"></g>`;
+    });
+    let x = 4, g = '';
+    for (const t of A.UNIT_TYPES) {
+      const w = ['hussar', 'cuirassier'].includes(t) ? 22 : t === 'siege' ? 32 : t === 'field' ? 22 : t === 'sapper' ? 16 : 14;
+      const ox = t === 'siege' ? 15 : t === 'field' ? 10 : t === 'sapper' ? 9 : ['hussar', 'cuirassier'].includes(t) ? 11 : 6;
+      g += `<g transform="translate(${x + ox} 27)">${A.unitFigure(t, k, { pose })}</g>`;
+      x += w;
+    }
+    html += svg(g, `0 0 ${x + 4} 30`, (x + 4) * 4, 120, `${A.KINGDOM_STYLE[k].name} · ${pose}`);
+  }
+  sect('units-' + pose, `unitFigure — ${pose}`, `<div class="grid">${html}</div>`);
+}
+
+// formations
+{
+  const ex = [
+    [{ line: 120 }, 'line 120'], [{ militia: 200, line: 150 }, '350 piyade'], [{ line: 500, light: 200 }, '700 piyade'],
+    [{ line: 900, grenadier: 200, hussar: 200, field: 4 }, 'karma 1300'], [{ line: 1500, guard: 300, light: 200, cuirassier: 300, hussar: 300, field: 8, siege: 3 }, 'dev ordu'],
+    [{ hussar: 700, cuirassier: 500, line: 200 }, 'süvari ağır'], [{ line: 2500 }, 'sadece piyade 2500'], [{ siege: 4, field: 6, sapper: 200 }, 'kuşatma treni'],
+  ];
+  let html = '';
+  ex.forEach(([c, l], i) => {
+    const k = i % 6;
+    html += svg(`<g transform="translate(35 34)">${A.armyFormation(c, k, {})}</g>`, '0 0 70 42', 70 * 5, 42 * 5, `${l} · ${A.KINGDOM_STYLE[k].name}`);
+  });
+  html += svg(`<g transform="translate(35 34)">${A.armyFormation({ line: 800, hussar: 300, field: 4 }, 2, { march: true })}</g>`, '0 0 70 42', 350, 210, 'march');
+  html += svg(`<g transform="translate(35 34)">${A.armyFormation({ line: 800, grenadier: 200, cuirassier: 300, field: 4 }, 0, { battle: true })}</g>`, '0 0 70 42', 350, 210, 'battle');
+  sect('army', 'armyFormation', `<div class="grid">${html}</div>`);
+}
+
+// forts
+{
+  let html = '';
+  for (const k of K) {
+    let g = '', x = 0;
+    for (let l = 1; l <= 5; l++) { const w = 18 + l * 7 + 10; g += `<g transform="translate(${x + w / 2} 40)">${A.fortModel(l, k, {})}</g>`; x += w; }
+    html += svg(g, `0 0 ${x} 58`, x * 4.2, 58 * 4.2, A.KINGDOM_STYLE[k].name);
+  }
+  sect('forts', 'fortModel 1–5 × krallık', `<div class="grid">${html}</div>`);
+  let h2 = '';
+  const st = [[{}, 'sağlam'], [{ wall: 0.6 }, 'wall .6'], [{ wall: 0.35, besieged: true }, 'wall .35 + kuşatma'], [{ wall: 0.3, breached: true }, 'gedik'], [{ wall: 0.2, breached: true, burning: true }, 'yanıyor']];
+  for (const l of [2, 3, 5]) {
+    let g = '', x = 0;
+    for (const [o] of st) { const w = 18 + l * 7 + 10; g += `<g transform="translate(${x + w / 2} 40)">${A.fortModel(l, l === 5 ? 1 : l === 3 ? 0 : 5, o)}</g>`; x += w; }
+    h2 += svg(g, `0 0 ${x} 58`, x * 4.2, 58 * 4.2, `seviye ${l}: ${st.map((s) => s[1]).join(' · ')}`);
+  }
+  sect('fortdmg', 'fortModel hasar durumları', `<div class="grid">${h2}</div>`);
+}
+
+// cities
+{
+  let html = '';
+  for (const kind of ['village', 'town', 'city', 'capital', 'industrial', 'port', 'mine']) {
+    let g = '', x = 0;
+    for (let s = 1; s <= 4; s++) { const w = 14 + (s - 1) * 8.7 + 14; g += `<g transform="translate(${x + w / 2} 28)">${A.cityModel(kind, s, (s + kind.length) % 6)}</g>`; x += w; }
+    html += svg(g, `0 0 ${x} 44`, x * 4, 44 * 4, kind);
+  }
+  sect('cities', 'cityModel', `<div class="grid">${html}</div>`);
+}
+
+// siege
+{
+  let html = '';
+  for (const k of [0, 3, 4]) html += svg(`<g transform="translate(24 16)">${A.siegeCamp(k)}</g>`, '0 0 48 28', 48 * 6, 28 * 6, 'siegeCamp ' + A.KINGDOM_STYLE[k].name);
+  for (const [k, n] of [[1, 1], [5, 2], [2, 3]]) html += svg(`<g transform="translate(18 22)">${A.siegeBattery(k, n)}</g>`, '0 0 44 36', 44 * 6, 36 * 6, `siegeBattery ${n}`);
+  sect('siege', 'Kuşatma', `<div class="grid">${html}</div>`);
+}
+
+// icons + cards + symbols
+{
+  let html = '';
+  for (const t of A.UNIT_TYPES) html += `<div class="cell dark">${A.unitIcon(t, { size: 48 * 2 * Z })}<div>${t}</div></div>`;
+  for (const t of A.UNIT_TYPES) html += `<div class="cell dark">${A.unitIcon(t, { size: 48 * Z })}</div>`;
+  sect('icons', 'unitIcon', `<div class="grid">${html}</div>`);
+  let c = '';
+  for (const k of [0, 4]) for (const t of A.UNIT_TYPES) c += `<div class="cell"><div style="width:${160 * 1.5 * Z}px;height:${110 * 1.5 * Z}px">${A.unitCardArt(t, k).replace('<svg ', '<svg width="100%" height="100%" ')}</div>${t}</div>`;
+  sect('cards', 'unitCardArt (2 krallık)', `<div class="grid">${c}</div>`);
+  const sy = [A.bridgeIcon(), A.passIcon(), A.railIcon(), A.depotIcon()].map((g, i) => `<g transform="translate(${8 + i * 16} 8)">${g}</g>`).join('');
+  sect('symbols', 'Harita sembolleri', `<div class="grid">${svg(sy, '0 0 64 16', 64 * 8, 16 * 8, 'bridge · pass · rail · depot')}</div>`);
+}
+
+// shot
+{
+  sect('shot', 'cannonShot / efektler', `<div class="grid"><div class="cell"><svg id="shotsvg" viewBox="0 0 120 50" width="${720 * Z}" height="${300 * Z}"><g transform="translate(14 40)">${A.unitFigure('siege', 0, { pose: 'fire' })}</g><g transform="translate(100 44)">${A.fortModel(2, 1, { wall: 0.5 })}</g></svg></div></div><button id="fire">Ateş!</button> <button id="boom">Patlama</button>`);
+  const s = document.getElementById('shotsvg');
+  const fire = () => { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = A.cannonShot(31, 33, 98, 36); s.appendChild(g); setTimeout(() => g.remove(), 1700); };
+  document.getElementById('fire')?.addEventListener('click', fire);
+  document.getElementById('boom')?.addEventListener('click', () => { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = A.explosion(70, 30, 1.5); s.appendChild(g); setTimeout(() => g.remove(), 1700); });
+  window.__fire = fire;
+}
+
+// portraits & flags
+{
+  let h = '';
+  for (const k of K) h += `<div class="cell"><img src="${A.flagUrl(k)}" width="180"><br><img src="${A.flagUrl(k, true)}"> ${['soldier', 'rider', 'commander', 'cannon', 'scene'].map((p) => `<img src="${A.portraitUrl(k, p)}" height="100">`).join('')}</div>`;
+  sect('assets', 'Bayraklar & portreler', `<div class="grid">${h}</div>`);
+}
+window.__ready = true;
+</script>
+</body>
+</html>

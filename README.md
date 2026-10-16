@@ -1,57 +1,48 @@
-# FRONTIERS — Strateji Laboratuvarı 2.0
+# FRONTIERS 3.0 — Cephe ve Kuşatma
 
-RISK tarzı, sade ve Türkçe bir ortaçağ strateji oyunu. Altı krallık, sınırlı altın, ekonomi + diplomasi + toprak genişletme. Tek oyunculu (yapay zekâya karşı) veya çevrim içi odalarda arkadaşlarla oynanır. Önceki simülasyon sürümü (v0.8) **Klasik mod** olarak `/game/klasik/` altında aynen çalışmaya devam eder.
+19. yüzyıl esintili, Türkçe, tur tabanlı büyük strateji oyunu. Altı devlet; on birlik sınıfı; kaleler ve çok aşamalı kuşatmalar; ekonomi, ikmal, istikrar ve diplomasi. Tamamen tarayıcıda çalışır (tek oyunculu ya da aynı ekranda 2–6 oyuncu); sunucuyla çevrim içi odalar da desteklenir.
 
-## Oyun
+Önceki sürümler korunur: **RISK modu (v2.0)** `/game/risk/`, **Klasik mod (v0.8)** `/game/klasik/`.
 
-- **Harita:** 6 krallık, 32 bölge (krallık başına 5–6), iki ada, bir iç göl ve kesikli çizgili deniz yolları. Bölge türleri: başkent (+3 altın, kaleyle başlar), maden (+3), liman (+2), köy (+1).
-- **Tur:** her oyuncunun sırası 3 aşamadır — **Takviye** (bölge sayısı/3, en az 3 + krallık bonusu + gelir/5 kadar asker; altınla asker 3, kale 8), **Saldırı** (saldıran en fazla 3, savunan en fazla 2 zar; kale +1 savunma zarı; eşitlikte savunan kazanır; fethedince asker taşınır), **Tahkim** (bir kez, bağlı kendi bölgelerin arasında). 1. tur hazırlık turudur, saldırılar 2. turda başlar. Sıra düzeni her oyunda rastgeledir.
-- **Krallık bonusu:** bir krallığın bütün bölgelerine sahip olan, her tur ek asker alır (sınırı çok olan krallıklar daha fazla).
-- **Diplomasi:** Ateşkes (3 tur saldırmazlık), Ticaret (5 tur, iki tarafa her tur +2 altın), İttifak (süresiz saldırmazlık, +1 altın, puan). Anlaşma bozmak itibarı düşürür (ateşkes/ittifak −3, ticaret −1); itibarı düşük ülkelerle yapay zekâ daha az anlaşır. Süresi dolana kadar sözünü tutana +1 itibar.
-- **Gizli görev:** her ülkeye oyun başında yalnızca kendisinin gördüğü bir görev verilir (başkent ele geçir, 15 bölge, 4 maden/liman/kale, 40 altın, 3 anlaşma, iki krallık, bir ülkeyi yok et). Tamamlayan +10 puan alır.
-- **Kazanma:** tüm haritayı fethetmek, hayatta kalanların hepsinin müttefik olması (en yüksek puanlı kazanır) ya da tur sınırında en yüksek puan (bölge ×3, kale, altın/5, anlaşmalar, görev, itibar).
+## Oynanış
 
-## Arayüz ve ses
+- **Harita:** boyalı bir kıta haritası üzerinde ~60 bölge. Arazi (ova, tarım, orman, tepe, dağ, çöl, bataklık), nehirler (köprülü/köprüsüz), dağ geçitleri, deniz yolları, yollar ve demir yolları. 7 harita modu (siyasi, fiziki, ekonomi, askerî güç, ikmal, diplomasi, istikrar), mevsimler (sonbaharda sararan ormanlar, kışın karlı dağlar) ve 4 yakınlaştırma seviyesi (kıta → bölge → taktik → yakın).
+- **Birlikler (paket hâlinde):** Milis 150 · Tüfekli 100 · Avcı 80 · Bombacı 60 · Muhafız 60 · Hafif Süvari 40 · Ağır Süvari 25 · Sahra Topu 4 · Kuşatma Topu 3 · İstihkâmcı 30. Fiyat, bakım, üretim süresi, demir ve insan gücü ihtiyacı; kışla/ahır/dökümhane/akademi/istihkâm okulu şartları.
+- **Savaş:** sayıyla değil; birlik türü, karşı üstünlük, arazi, moral, ikmal, tecrübe, duruş (sahra / savunma hattı / garnizon / akın), nehir ve tahkimat birlikte belirler. Savaş öncesi tahmini zafer şansı ve kayıp aralığı, sonrası ayrıntılı rapor.
+- **Kaleler:** 5 seviye (Sınır Karakolu → İmparatorluk Kalesi), sur dayanıklılığı, kale topları, erzak, garnizon ihtiyacı. Kuşatma: çevreleme → top mevzisi ve siper → bombardıman → gedik → genel hücum → teslimiyet / iç kalede son savunma. Topçusuz abluka da mümkün ama çok yavaş.
+- **Ekonomi:** altın, nüfus, insan gücü, erzak, demir, istikrar, savaş yorgunluğu. Bölge türleri (başkent, şehir, sanayi, liman, maden, kasaba, köy), 9 bina + kale, bakım ve borç (borçta üretim durur, moral düşer, firar başlar). Aşırı genişleme ve işgal bölgeleri kartopu etkisini frenler.
+- **İkmal:** başkent, depo ve şehirlerden dost topraklar boyunca; düşman orduları ve hafif süvari akınları hattı keser. İkmalsiz ordunun önce gücü ve morali düşer, sonra kayıplar başlar.
+- **Diplomasi:** savaş ilanı (toprak talebiyle meşru), şartlı barış (toprak + tazminat), ateşkes, ticaret, askerî geçiş izni, savunma ittifakı (otomatik savaşa girer), saldırmazlık, itibar.
+- **Yapay zekâ:** yayılmacı / savunmacı / ekonomik / diplomatik / dengeli kişilikler; güç oranı, ekonomi, kale, ikmal ve savaş yorgunluğuna göre karar verir, kaleler için kuşatma treni hazırlar. Zorluk hile değil karar kalitesidir.
+- **Rehber ve Eğitim:** birlik kartları, gerçek motorla hesaplanan "kim kime üstün" tablosu, arazi/kuşatma/ekonomi kuralları ve savaş simülatörü; ilk oyunda 10 adımlık eğitim.
+- **Kayıt:** her hamlede otomatik kayıt, 3 elle kayıt yuvası, .json dosyasına aktarma/yükleme.
 
-Ana menü (Tek Oyunculu, Çok Oyunculu, Devam Et, Seçenekler, Krediler, Çıkış) klavyeyle (↑ ↓ Enter Esc) gezilebilir. Oyun ekranında üst bar (sıra, aşama, tur, altın), krallık listesi, "Şimdi ne yapmalıyım?" kartı, bölge bilgisi, gizli görev, olay kaydı ve büyük aksiyon düğmeleri vardır. İlk oyunda 6 adımlı ipucu baloncukları gösterilir. Masaüstü ve mobil uyumludur (dar ekranda paneller çekmeceye dönüşür, harita sürükle/yakınlaştır).
+## Çalıştırma
 
-Müzikler `public/game/assets/audio/` altındadır: `menu.mp3` menüde, `savas.mp3` oyun açılışında ve savaşlarda; diğer parçalar lobide, kredilerde ve sefer/savaş çalma listelerinde. Geçişler 1,6 sn yumuşaktır; müzik tarayıcı kuralı gereği ilk tıklamada başlar. Efekt sesleri Web Audio ile üretilir. Müzik/efekt sesi ve sessiz mod tarayıcıda saklanır.
+```sh
+npm test            # v3 sistem + denge + dünya testleri, RISK (v2) ve Klasik (v0.8) testleri
+npm run local       # http://localhost:8787 — oyun + çevrim içi odalar (SQLite)
+node tools/balance-scenarios.mjs 400   # denge senaryoları A–H raporu
+node tools/ai-sim.mjs 6 24 normal      # 6 yapay zekâlı maç simülasyonu
+python tools/generate-map-v3.py        # haritayı referans görselden yeniden üret
+```
 
-> Müzikler Age of Empires II/III film müziklerindendir (Stephen Rippy, David Rippy); hakları sahiplerine aittir. Herkese açık yayında lisans durumunu kontrol edin.
+GitHub Pages: `.github/workflows/pages.yml` testleri çalıştırıp `public/` klasörünü yayınlar.
 
 ## Kod düzeni
 
 ```
-public/game/
-  index.html, css/style.css, assets/ (img, audio, fonts)
-  js/main.js                 ekran yönlendirme, davet bağlantıları
-  js/rules/                  saf oyun kuralları (istemci + sunucu ortak)
-    constants.js state.js economy.js combat.js diplomacy.js missions.js turn.js commands.js ai.js index.js
-  js/data/map.js             üretilmiş harita (tools/generate-map.py)
-  js/ui/                     menu.js game-ui.js map-view.js dice.js heraldry.js icons.js tutorial.js dom.js
-  js/audio/audio.js          müzik + efekt
-  js/net/online.js           çevrim içi oda istemcisi
-  js/game/local-session.js   tek oyunculu oturum, yapay zekâ animasyonu
-  js/save.js                 otomatik kayıt / Devam Et
-  klasik/                    v0.8 oyunu (değiştirilmedi)
-server/rooms.js              v2 oda servisi + RoomRouter (v2 / klasik yönlendirme) + D1Store
-server/rooms-klasik.js       v0.8 oda servisi (değiştirilmedi)
-server/local-server.js       Cloudflare'siz yerel sunucu (SQLite)
-app/api/rooms/route.ts       Cloudflare Worker API'si
-tools/generate-map.py        harita üreteci (numpy, scipy, shapely)
+public/game/js/rules/      saf kurallar (istemci + sunucu ortak)
+  constants.js             BÜTÜN denge değerleri: birlikler, karşı üstünlük, arazi, kaleler, binalar, ekonomi, diplomasi
+  units.js (UnitSystem)  recruit.js (Recruitment + inşaat)  army.js (ArmySystem: hareket, böl/birleştir, savaş çözümü)
+  combat.js (CombatSystem)  siege.js (SiegeSystem)  economy.js (EconomySystem)  logistics.js (LogisticsSystem)
+  diplomacy.js (DiplomacySystem)  territory.js (TerritorySystem)  missions.js  turn.js  commands.js  ai.js (AIController)
+public/game/js/data/map.js üretilmiş harita (tools/generate-map-v3.py)
+public/game/js/ui/         map-view.js (MapSystem görünümü) game-ui.js panels.js dialogs.js codex.js art.js tutorial.js menu.js
+public/game/js/save.js     SaveLoadSystem
+server/rooms.js            v3 oda servisi + RoomRouter (v3 / v2 RISK / klasik)
 ```
 
 Tüm hamleler `applyCommand` kapısından geçer; tek oyunculu oyun, yapay zekâ ve sunucu aynı kuralları kullanır.
 
-## Çevrim içi odalar
-
-`/api/rooms` kanonik oyun durumunu D1'de tutar; istemci yalnızca komut gönderir, zarlar sunucuda atılır. Revizyon kontrolü çakışan yazmaları, istek kimliği tekrarları önler. Oyuncu tokenı yalnızca tarayıcıda, özeti sunucuda saklanır; aynı tarayıcıyla geri dönen oyuncu kaldığı yerden devam eder. Lobi: oda kodu, davet bağlantısı, ülke/renk seçimi, Hazır, kurucu başlatır (kurucu ayarlardan tur ve yapay zekâ zorluğunu seçer). Boş ülkeleri sunucudaki yapay zekâ oynar. Sırası olan oynar, diğerleri 1,5 sn'lik yoklamayla canlı izler; teklifleri her an yanıtlayabilirler. 90 sn hamle yapmayan oyuncunun turunu diğerleri yapay zekâya devredebilir. Başkalarının gizli görevleri oyun bitene kadar gönderilmez. Klasik odalar (`v` alanı olmayanlar) otomatik olarak eski servise ve `/game/klasik/` istemcisine yönlenir.
-
-## Çalıştırma ve test
-
-```sh
-npm test                    # 74 test: v2 kurallar + odalar, v0.8 klasik testler
-npm run local               # http://localhost:8787 (aynı ağdaki arkadaşlar IP adresiyle bağlanabilir)
-pnpm build && pnpm start    # Cloudflare Worker (D1 migration: BASLANGIC-TR.md)
-python tools/generate-map.py onizleme.png   # haritayı yeniden üret
-```
+> Müzikler Age of Empires II/III film müzikleridir (Stephen Rippy, David Rippy); hakları sahiplerine aittir. Herkese açık yayında lisans durumunu kontrol edin.

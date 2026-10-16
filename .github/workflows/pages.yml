@@ -1,0 +1,44 @@
+# GitHub Pages: testleri çalıştırır, public/ klasörünü statik site olarak yayınlar.
+# Oyun tamamen tarayıcıda çalışır (tek oyunculu + aynı ekranda çok oyunculu). Çevrim içi odalar sunucu ister.
+name: Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Testler
+        run: node --test tests/*.test.js tests/risk/*.test.js tests/klasik/*.test.js
+      - name: Siteyi hazırla
+        run: |
+          mkdir -p _site
+          cp -r public/* _site/
+          touch _site/.nojekyll
+          cat > _site/index.html <<'HTML'
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>FRONTIERS</title>
+          <meta http-equiv="refresh" content="0; url=game/index.html">
+          <script>location.replace('game/index.html' + location.search)</script></head>
+          <body style="background:#0c0906;color:#f3e8cf;font-family:sans-serif"><a href="game/index.html">FRONTIERS — oyuna git</a></body></html>
+          HTML
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

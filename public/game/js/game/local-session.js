@@ -1,23 +1,32 @@
-// Tek oyunculu oturum: kurallar tarayıcıda çalışır, yapay zekâ hamleleri animasyonla oynatılır, her hamle kaydedilir.
-import { applyCommand, nextCommand, copy, regionsOf } from '../rules/index.js';
+// Yerel oturum: tek oyunculu ya da aynı ekranda (sıcak koltuk) çok oyunculu. Kurallar tarayıcıda çalışır,
+// yapay zekâ hamleleri tek tek animasyonla oynatılır, her hamle kaydedilir.
+import { applyCommand, nextCommand, copy, playerName } from '../rules/index.js';
 import { saveGame, clearSave } from '../save.js';
 import { audio } from '../audio/audio.js';
-import { sleep } from '../ui/dom.js';
+import { sleep, modal } from '../ui/dom.js';
 
-const SPEED = { slow: 900, normal: 420, fast: 110 };
+const SPEED = { slow: 900, normal: 380, fast: 90 };
 
 export class LocalSession {
-  constructor(state, me) {
-    this.mode = 'single';
+  constructor(state, me, { humans } = {}) {
     this.state = state;
-    this.me = me;
+    this.humans = humans ?? state.players.filter(p => p.human).map(p => p.id);
+    this.mode = this.humans.length > 1 ? 'hotseat' : 'single';
+    this.seat = me;
     this.ui = null;
     this.running = false;
     this.closed = false;
   }
 
+  // Sıcak koltukta "ben", sırası gelen insan oyuncudur.
+  get me() {
+    if (this.mode !== 'hotseat') return this.seat;
+    const a = this.state.active;
+    if (this.humans.includes(a)) this.seat = a;
+    return this.seat;
+  }
   get myTurn() { return !this.state.finished && this.state.active === this.me; }
-  canAct() { return this.myTurn && !this.running; }
+  canAct() { return this.myTurn && !this.running && !this.handoff; }
   connected() { return true; }
 
   attach(ui) { this.ui = ui; this.save(); this.runAi(); }
@@ -25,7 +34,7 @@ export class LocalSession {
 
   save() {
     if (this.state.finished) clearSave();
-    else saveGame({ state: this.state, me: this.me });
+    else saveGame({ state: this.state, me: this.me, humans: this.humans });
   }
 
   async dispatch(cmd) {
@@ -34,8 +43,17 @@ export class LocalSession {
     const result = applyCommand(this.state, cmd, this.me, Math.random);
     this.save();
     await this.ui?.update(prev, this.state, { cmd, result, actor: this.me, mine: true });
-    this.runAi();
+    if (cmd.type === 'endTurn') this.runAi();
     return result;
+  }
+
+  // Sıcak koltuk: sıra başka bir insana geçince ekranı ona devret.
+  async handoffTo(p) {
+    this.handoff = true;
+    await new Promise(res => modal({ title: 'Sıra değişiyor', body: `<p>Cihazı <b>${playerName(this.state, p)}</b> komutanına ver. Hazır olunca devam et.</p>`, onClose: res, actions: [{ label: 'Hazırım', primary: true, onClick: res }] }));
+    this.handoff = false;
+    this.ui?.refresh();
+    this.ui?.fitStart();
   }
 
   async runAi() {
@@ -49,21 +67,21 @@ export class LocalSession {
         const prev = copy(this.state);
         let result = null;
         try { result = applyCommand(this.state, cmd, p, Math.random); }
-        catch {
-          // Beklenmeyen bir hata turu kilitlemesin.
-          const s = this.state;
-          if (s.occupy) applyCommand(s, { type: 'occupy', n: s.occupy.max }, p);
-          else if (s.phase === 'reinforce' && s.players[p].reserve) applyCommand(s, { type: 'place', region: regionsOf(s, p)[0], n: s.players[p].reserve }, p);
-          else applyCommand(s, { type: 'endTurn' }, p);
-        }
+        catch { if (cmd.type === 'endTurn') break; continue; }
         this.save();
-        await this.ui?.update(prev, this.state, { cmd, result, actor: p, ai: true });
+        if (this.ui && this.ui.map.lod >= 1) await this.ui.update(prev, this.state, { cmd, result, actor: p, ai: true });
         const speed = SPEED[audio.settings.aiSpeed] ?? SPEED.normal;
-        await sleep(cmd.type === 'attack' ? speed * 1.6 : cmd.type === 'place' || cmd.type === 'buy' ? speed * 0.6 : speed);
+        const visible = cmd.type === 'move' || cmd.type === 'assault' || cmd.type === 'declareWar';
+        if (visible) await sleep(result?.battle ? speed * 2 : speed);
+        else if (cmd.type === 'endTurn') await sleep(speed * 0.5);
       }
     } finally {
       this.running = false;
       this.ui?.refresh();
+    }
+    if (this.mode === 'hotseat' && !this.state.finished && this.humans.length > 1 && this.lastHuman !== this.state.active) {
+      this.lastHuman = this.state.active;
+      await this.handoffTo(this.state.active);
     }
   }
 }

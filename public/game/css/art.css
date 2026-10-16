@@ -1,0 +1,81 @@
+/* FRONTIERS — art.js animasyon sınıfları. Yalnızca transform/opacity; her şey .art- önekli. */
+
+/* yürüyüş: hafif zıplama */
+.art-march { animation: art-bob 0.62s ease-in-out infinite alternate; }
+@keyframes art-bob { from { transform: translateY(0); } to { transform: translateY(-0.55px); } }
+
+/* namlu alevi: kısa parlama, uzun bekleme */
+.art-flash { animation: art-flash 1.7s linear infinite; }
+.art-army .art-fig:nth-child(odd) .art-flash { animation-delay: -0.55s; }
+@keyframes art-flash {
+  0% { opacity: 1; } 7% { opacity: 0.85; } 13% { opacity: 0; } 100% { opacity: 0; }
+}
+
+/* yükselen duman */
+.art-smoke {
+  transform-box: fill-box; transform-origin: center;
+  animation: art-smoke 3.2s ease-out infinite; opacity: 0;
+}
+@keyframes art-smoke {
+  0% { transform: translateY(0) scale(0.45); opacity: 0; }
+  12% { opacity: 0.62; }
+  100% { transform: translateY(-9px) scale(1.9); opacity: 0; }
+}
+
+/* alev titremesi */
+.art-fire {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: art-fire 0.42s ease-in-out infinite alternate;
+}
+@keyframes art-fire {
+  from { transform: scale(1, 1); opacity: 1; }
+  to { transform: scale(0.86, 1.22); opacity: 0.85; }
+}
+
+/* ---- tek seferlik efektler (çağıran ~1.6 sn sonra kaldırır) ---- */
+.art-puff {
+  transform-box: fill-box; transform-origin: center;
+  animation: art-puff 1.1s ease-out both; animation-delay: var(--d, 0s);
+}
+@keyframes art-puff {
+  0% { transform: scale(0.2); opacity: 0; }
+  12% { opacity: 0.9; }
+  100% { transform: translateY(-2.5px) scale(1.7); opacity: 0; }
+}
+.art-puff-fire { animation-name: art-puff-fire; animation-duration: 0.45s; }
+@keyframes art-puff-fire {
+  0% { transform: scale(0.2); opacity: 0; } 15% { opacity: 1; } 100% { transform: scale(1.6); opacity: 0; }
+}
+.art-boom {
+  transform-box: fill-box; transform-origin: center;
+  animation: art-boom 0.32s ease-out both; animation-delay: var(--d, 0s);
+}
+@keyframes art-boom { 0% { transform: scale(0.3); opacity: 0; } 20% { opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+
+.art-debris { animation: art-debris 0.75s cubic-bezier(.2, .7, .4, 1) both; animation-delay: var(--d, 0s); }
+@keyframes art-debris {
+  0% { transform: translate(0, 0) rotate(0); opacity: 0; }
+  8% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translate(var(--tx, 2px), var(--ty, -3px)) rotate(var(--r, 180deg)); opacity: 0; }
+}
+.art-fall { animation: art-fall 0.75s cubic-bezier(.55, 0, 1, .45) both; animation-delay: var(--d, 0s); }
+@keyframes art-fall { from { transform: translateY(0); } to { transform: translateY(4px); } }
+
+/* gülle: x doğrusal, y doğrusal, yay için ayrı yükselme katmanı */
+.art-shot-x { animation: art-shot-x 0.9s linear both; }
+.art-shot-y { animation: art-shot-y 0.9s linear both; }
+.art-shot-lift { animation: art-shot-lift 0.9s both; }
+@keyframes art-shot-x { 0% { transform: translateX(0); opacity: 1; } 96% { opacity: 1; } 100% { transform: translateX(var(--dx, 0px)); opacity: 0; } }
+@keyframes art-shot-y { from { transform: translateY(0); } to { transform: translateY(var(--dy, 0px)); } }
+@keyframes art-shot-lift {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(.33, .66, .66, 1); }
+  50% { transform: translateY(var(--lift, -10px)); animation-timing-function: cubic-bezier(.33, 0, .66, .33); }
+  100% { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art-march, .art-fire { animation: none; }
+  .art-flash { animation: none; opacity: 0.8; }
+  .art-smoke { animation: none; opacity: 0.4; }
+}

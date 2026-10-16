@@ -6,7 +6,7 @@ import { Menu } from './ui/menu.js';
 import { GameUI } from './ui/game-ui.js';
 import { LocalSession } from './game/local-session.js';
 import { OnlineSession, probeRoom, storedToken, forgetRoom } from './net/online.js';
-import { loadGame } from './save.js';
+import { loadGame, loadSlot, validSave } from './save.js';
 
 class App {
   constructor() {
@@ -40,7 +40,8 @@ class App {
     try {
       const { v } = await probeRoom(code);
       // Klasik (v0.8) odalar eski istemcide açılır.
-      if (v !== 2) { location.replace('klasik/index.html?room=' + code); return; }
+      if (v === 2) { location.replace('risk/index.html?room=' + code); return; }
+      if (v !== 3) { location.replace('klasik/index.html?room=' + code); return; }
       if (storedToken(code)) return this.enterRoom(await OnlineSession.resume(code));
       this.menu.multi(code);
       toast(`Oda ${code} için adını yazıp "Odaya Katıl" de.`, 'info', 5000);
@@ -61,7 +62,7 @@ class App {
     $('#menu-bg').hidden = true;
     $('#screen-game').hidden = false;
     this.game?.destroy();
-    this.game = new GameUI(session, { onExit: () => this.exitGame(), onNewGame: () => { this.exitGame(); this.menu.single(); } });
+    this.game = new GameUI(session, { onExit: () => this.exitGame(), onNewGame: () => { this.exitGame(); this.menu.single(); }, onLoad: src => this.loadFrom(src) });
     audio.music('campaign');
   }
 
@@ -75,16 +76,26 @@ class App {
     this.menu.show();
   }
 
-  startSingle({ me, difficulty, maxRounds }) {
-    const state = newGame({ humans: [me], difficulty, maxRounds, mode: 'single' });
-    this.showGame(new LocalSession(state, me));
+  startSingle({ me, humans = [me], difficulty, maxRounds }) {
+    const state = newGame({ humans, difficulty, maxRounds, mode: humans.length > 1 ? 'hotseat' : 'single' });
+    this.showGame(new LocalSession(state, me, { humans }));
   }
 
   continueGame() {
     const save = loadGame();
     if (!save) { toast('Kayıtlı oyun bulunamadı.', 'warn'); return; }
-    this.showGame(new LocalSession(save.state, save.me));
+    this.showGame(new LocalSession(save.state, save.me, { humans: save.humans }));
     toast('Kayıtlı oyun yüklendi.', 'good');
+  }
+
+  // Elle kayıt yuvası ya da dosyadan yükleme.
+  loadFrom({ slot, data }) {
+    const save = slot ? loadSlot(slot) : data;
+    if (!validSave(save)) { toast('Kayıt geçersiz ya da başka bir sürüme ait.', 'error'); return; }
+    this.game?.destroy();
+    this.game = null;
+    this.showGame(new LocalSession(save.state, save.me, { humans: save.humans }));
+    toast('Kayıt yüklendi.', 'good');
   }
 
   enterRoom(session) {

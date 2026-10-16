@@ -1,8 +1,9 @@
-// FRONTIERS v2 çevrim içi oda servisi.
+// FRONTIERS v3 çevrim içi oda servisi.
 // Kanonik oyun durumu sunucudadır; istemciler yalnızca komut gönderir. Zarlar sunucuda atılır.
 // Boş kalan ülkeleri yapay zekâ oynar. Klasik (v0.8) odalar server/rooms-klasik.js ile çalışmaya devam eder.
 import * as G from '../public/game/js/rules/index.js';
 import { RoomService as ClassicRoomService } from './rooms-klasik.js';
+import { RoomService as RiskRoomService } from './rooms-v2.js';
 
 export class RoomError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 const check = (ok, msg, status = 400) => { if (!ok) throw new RoomError(msg, status); };
@@ -14,8 +15,8 @@ const cleanName = n => { check(typeof n === 'string' && n.trim().length > 0 && n
 export const IDLE_TAKEOVER_MS = 90000;
 
 function roomConfig(c = {}) {
-  const maxRounds = c.maxRounds ?? 15;
-  check([0, 10, 15, 25].includes(maxRounds), 'Tur sayısı 10, 15, 25 veya sınırsız olmalı.');
+  const maxRounds = c.maxRounds ?? 24;
+  check([0, 16, 24, 40].includes(maxRounds), 'Tur sayısı 16, 24, 40 veya sınırsız olmalı.');
   const difficulty = c.difficulty ?? 'normal';
   check(Object.hasOwn(G.DIFFICULTIES, difficulty), 'Geçersiz zorluk.');
   return { maxRounds, difficulty };
@@ -29,7 +30,7 @@ export function view(room, member, now = Date.now()) {
     if (!game.finished) for (const p of game.players) if (p.id !== member.seat) p.mission = null;
   }
   return {
-    v: 2, code: room.code, revision: room.revision, started: room.started, host: room.host, me: member.id, seat: member.seat,
+    v: 3, code: room.code, revision: room.revision, started: room.started, host: room.host, me: member.id, seat: member.seat,
     config: room.config, players: room.players.map(({ id, name, seat, ready }) => ({ id, name, seat, ready })),
     game, turnStartedAt: room.turnStartedAt ?? null, serverNow: now,
   };
@@ -45,7 +46,7 @@ export class RoomService {
   async create(input) {
     const config = roomConfig(input.config), token = random(), id = random();
     const room = {
-      v: 2, code: random().slice(0, 8).toUpperCase(), revision: 0, host: id, started: false, config,
+      v: 3, code: random().slice(0, 8).toUpperCase(), revision: 0, host: id, started: false, config,
       players: [{ id, name: cleanName(input.name), seat: 0, ready: false, tokenHash: await hash(token) }],
       game: null, receipts: [], turnStartedAt: null,
     };
@@ -158,17 +159,19 @@ export class RoomService {
   }
 }
 
-// Oda verisinin sürümüne göre doğru servise yönlendirir: v2 yeni oyun, diğerleri klasik oyun.
+// Oda verisinin sürümüne göre doğru servise yönlendirir: v3 yeni oyun, v2 RISK modu, diğerleri klasik oyun.
 export class RoomRouter {
   constructor(store, options = {}) {
     this.store = store;
-    this.v2 = new RoomService(store, options);
+    this.v3 = new RoomService(store, options);
+    this.v2 = new RiskRoomService(store, options);
     this.classic = new ClassicRoomService(store, options.classic ?? {});
   }
   async pick(code) {
-    if (typeof code !== 'string' || !/^[A-F0-9]{8}$/.test(code)) return this.v2;
+    if (typeof code !== 'string' || !/^[A-F0-9]{8}$/.test(code)) return this.v3;
     const raw = await this.store.get(code);
-    return raw && raw.v !== 2 ? this.classic : this.v2;
+    if (!raw) return this.v3;
+    return raw.v === 3 ? this.v3 : raw.v === 2 ? this.v2 : this.classic;
   }
   async handle(method, token, input, code) {
     if (method === 'GET' && input?.probe) {
@@ -176,11 +179,11 @@ export class RoomRouter {
       check(typeof code === 'string' && /^[A-F0-9]{8}$/.test(code), 'Oda kodu 8 karakter olmalı.');
       const raw = await this.store.get(code);
       check(raw, 'Oda bulunamadı.', 404);
-      return { v: raw.v === 2 ? 2 : 1 };
+      return { v: raw.v === 3 ? 3 : raw.v === 2 ? 2 : 1 };
     }
     if (method === 'GET') return (await this.pick(code)).get(code, token);
     // Klasik istemci senaryo seçerek oda kurar.
-    if (input.op === 'create') return input.mode === 'classic' || input.config?.scenario ? this.classic.create(input) : this.v2.create(input);
+    if (input.op === 'create') return input.mode === 'classic' || input.config?.scenario ? this.classic.create(input) : input.mode === 'risk' ? this.v2.create(input) : this.v3.create(input);
     const svc = await this.pick(input.code);
     if (input.op === 'join') return svc.join(input.code, input);
     return svc.act(input.code, token, input);

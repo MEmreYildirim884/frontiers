@@ -1,9 +1,10 @@
 // Çevrim içi oda istemcisi: sunucuya komut gönderir, 1,5 saniyede bir güncel durumu çeker.
 // Oyuncu kimliği (token) yalnızca bu tarayıcıda saklanır; aynı tarayıcıyla geri dönen oyuncu kaldığı yerden devam eder.
-const API = '/api/rooms';
+// Statik yayında (ör. GitHub Pages) alt klasörde çalışılsa da API sitenin kökündedir.
+const API = new URL('/api/rooms', location.origin).href;
 const POLL_MS = 1500;
-const tokenKey = code => 'frontiers-v2-room-' + code;
-const LAST_KEY = 'frontiers-v2-last-room';
+const tokenKey = code => 'frontiers-v3-room-' + code;
+const LAST_KEY = 'frontiers-v3-last-room';
 
 export const storedToken = code => { try { return localStorage.getItem(tokenKey(code)); } catch { return null; } };
 export const lastRoom = () => { try { const c = localStorage.getItem(LAST_KEY); return c && storedToken(c) ? c : null; } catch { return null; } };

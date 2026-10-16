@@ -1,23 +1,15 @@
 # FRONTIERS — Yapılacaklar
 
-Son durum (2026-10-11): v2.0 tamamlandı, commit `4c11bab`. 74/74 test geçiyor, Cloudflare derlemesi başarılı.
-Yayın paketi: `../FRONTIERS-v2.0-kaynak.zip` (git archive HEAD).
-
-## Sıradaki adım
-- [ ] **ChatGPT Sites'a yayın** — kullanıcı zip'i ChatGPT'deki mevcut FRONTIERS projesine yükleyip
-      "mevcut siteyi güncelle, yeni site oluşturma" diyecek. Hata çıkarsa mesajı buraya getirecek.
-- [ ] Yayından sonra canlı sitede kontrol: menü + müzik, tek oyunculu tur, çevrim içi oda (iki cihaz),
-      eski (klasik) oda davet bağlantısı.
+Son durum (2026-10-16): v3.0 "Cephe ve Kuşatma" tamamlandı ve GitHub Pages'e yayınlandı.
+v2.0 RISK modu `/game/risk/`, v0.8 Klasik mod `/game/klasik/` altında çalışmaya devam ediyor.
 
 ## Karar bekleyenler (kullanıcıya sor)
-- [ ] **Müzik telifi:** parçalar Age of Empires II/III film müzikleri. Herkese açık site için telifsiz
-      ortaçağ parçalarıyla değiştirelim mi? (Oyun müziksiz de çalışır.)
-- [ ] İnternetten hızlı test için tünel (Cloudflare Tunnel) istenirse kur — yayın beklenmeden.
+- [ ] **Müzik telifi:** parçalar Age of Empires II/III film müzikleri ve artık herkese açık GitHub deposunda. Telifsiz parçalarla değiştirilsin mi?
+- [ ] Çevrim içi odalar için sunuculu yayın (Cloudflare Worker ya da başka bir Node sunucusu). GitHub Pages statiktir; şimdilik "Aynı Ekranda" modu var.
 
 ## İyileştirme fikirleri
-- [ ] Denge: yapay zekâ maçlarında köşe krallıklar (Kızıl Aslan, Bakır Kılıç) daha sık kazanıyor.
-- [ ] Efekt seslerini kulakla dinleyip ayarla (sentez sesler yalnızca programatik doğrulandı).
-- [ ] Çevrim içi: 1,5 sn yoklama yerine anlık bağlantı (WebSocket / Durable Object) — opsiyonel.
-- [ ] Başka cihazdan ülke kurtarma (şu an token yalnızca tarayıcıda).
-- [ ] Yapay zekâ turlarında çevrim içi izleyicilere olayları sırayla tekrar oynat (şu an toplu animasyon).
-- [ ] Gerçek kullanıcılarla oyun testi; dengeyi geri bildirime göre ayarla.
+- [ ] Denge: gerçek oyuncu geri bildirimiyle birlik fiyat/bakım ince ayarı (`constants.js`, `tools/balance-scenarios.mjs`).
+- [ ] Yapay zekâ: çok cepheli savaşlarda ordu bölme, deniz çıkarmaları, akın birliklerini daha bilinçli kullanma.
+- [ ] Harita: daha yüksek çözünürlüklü arazi görseli (şu an 2896×2172); yakın görünümde ayrıntı dokuları.
+- [ ] Çevrim içi: yoklama yerine anlık bağlantı (WebSocket / Durable Object).
+- [ ] Efekt seslerini kulakla ayarla.
