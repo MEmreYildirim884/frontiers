@@ -107,7 +107,7 @@
 .mode-physical .region:hover { fill-opacity: .12; fill: #fff !important; }
 .region.besieged { animation: besieged 2.2s ease-in-out infinite; }
 @keyframes besieged { 50% { fill-opacity: .72; } }
-.lod-1 .region { fill-opacity: .58; }
+.lod-1 .region { fill-opacity: .5; }
 .river { fill: none; stroke: #7fc3df; stroke-opacity: .55; stroke-width: calc(var(--w) * .55); stroke-linecap: round; stroke-linejoin: round; }
 .lod-1 .river { stroke-opacity: .35; }
 .road { fill: none; stroke: #f1d9a8; stroke-opacity: .32; stroke-width: .7; stroke-dasharray: 2.2 1.6; stroke-linecap: round; }
@@ -125,7 +125,7 @@
 @keyframes dash { to { stroke-dashoffset: -16; } }
 .hi-move.hi-move { color: var(--c-move); } .hi-battle { color: var(--c-battle); } .hi-siege { color: var(--c-siege); } .hi-capture { color: var(--c-capture); } .hi-rail { color: var(--c-rail); } .hi-sea { color: var(--c-sea); }
 .mv-tag rect { fill: rgba(10, 14, 22, .9); stroke: currentColor; stroke-width: .6; }
-.mv-tag text { font: 700 7px var(--font-body); fill: currentColor; }
+.mv-tag text { font: 700 4.6px var(--font-body); fill: currentColor; }
 .mv-tag.mv-move { color: var(--c-move); } .mv-tag.mv-battle { color: var(--c-battle); } .mv-tag.mv-siege { color: var(--c-siege); } .mv-tag.mv-capture { color: var(--c-capture); } .mv-tag.mv-rail { color: var(--c-rail); } .mv-tag.mv-sea { color: var(--c-sea); }
 .arrow { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 6 3; animation: dash .8s linear infinite; }
 .arrow.move, .arrow.capture, .arrow.rail, .arrow.sea { stroke: var(--c-move); } .arrow.battle { stroke: var(--c-battle); } .arrow.siege { stroke: var(--c-siege); }
@@ -173,7 +173,7 @@
 .army.garrison .army-near { transform: scale(.85); }
 .army.marching .formation { animation: bob .45s ease-in-out 2; }
 @keyframes bob { 50% { transform: scale(.42) translateY(-2px); } }
-.lod-3 .formation { transform: scale(.5); } .lod-4 .formation { transform: scale(.56); }
+.lod-3 .formation { transform: scale(.58); } .lod-4 .formation { transform: scale(.72); }
 .army-selected .region:not(:hover) { fill-opacity: .36; }
 
 /* Efektler */

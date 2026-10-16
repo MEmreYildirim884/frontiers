@@ -105,7 +105,7 @@ export class MapView {
     this.labelLayer = svg('g', { class: 'labels', 'pointer-events': 'none' }, root);
     this.kLabelLayer = svg('g', { class: 'klabels', 'pointer-events': 'none' }, root);
     for (const l of KLABELS) {
-      const t = svg('text', { x: l.x, y: l.y, class: 'klabel', 'text-anchor': 'middle', style: `font-size:${(l.size ?? 1) * 20}px` }, this.kLabelLayer);
+      const t = svg('text', { x: l.x, y: l.y, class: 'klabel', 'text-anchor': 'middle', style: `font-size:${(l.size ?? 30) * 0.6}px` }, this.kLabelLayer);
       t.textContent = K[l.kingdom].full.toLocaleUpperCase('tr');
     }
     this.labels = REGIONS.map(r => {
@@ -236,9 +236,9 @@ export class MapView {
       for (const [id, mv] of moves) {
         svg('path', { d: REGIONS[id].d, class: `hi-move hi-${mv.kind}` }, this.hiLayer);
         const m = G.META[id];
-        const g = svg('g', { class: `mv-tag mv-${mv.kind}`, transform: `translate(${m.x},${m.y - 14})` }, this.hiLayer);
-        svg('rect', { x: -15, y: -7, width: 30, height: 12, rx: 6 }, g);
-        const t = svg('text', { 'text-anchor': 'middle', y: 2.2 }, g);
+        const g = svg('g', { class: `mv-tag mv-${mv.kind}`, transform: `translate(${m.x},${m.y - 10})` }, this.hiLayer);
+        svg('rect', { x: -7, y: -4, width: 14, height: 7, rx: 3.5 }, g);
+        const t = svg('text', { 'text-anchor': 'middle', y: 1.6 }, g);
         t.textContent = mv.kind === 'battle' ? '⚔' : mv.kind === 'siege' ? '⛫' : mv.kind === 'capture' ? '⚑' : mv.label ?? (mv.cost ? `${mv.cost}` : '');
       }
       if (hover !== null && hover !== undefined && moves.has(hover) && this.armySel) this.drawArrow(this.armySel.region, hover, moves.get(hover).kind);
@@ -420,7 +420,7 @@ export class MapView {
   // ——— Yakınlaştırma / kaydırma ———
   zoom(f, cx = this.view.x + this.view.w / 2, cy = this.view.y + this.view.h / 2, animate = false) {
     const v = this.view;
-    const w = Math.min(this.home.w * 1.05, Math.max(this.home.w / 7, v.w * f));
+    const w = Math.min(this.home.w * 1.05, Math.max(this.home.w / 4.6, v.w * f));
     const h = w * (this.home.h / this.home.w);
     const target = { x: cx - (cx - v.x) * (w / v.w), y: cy - (cy - v.y) * (h / v.h), w, h };
     if (animate) return this.animateTo(target);

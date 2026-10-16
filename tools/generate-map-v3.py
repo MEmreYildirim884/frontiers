@@ -959,7 +959,7 @@ def classify_terrain(regs, adj):
             g['terrain'] = 'forest'
             left.remove(g)
         nh = int(round(q['hills'] * n))
-        for g in sorted(left, key=mscore, reverse=True)[:nh]:
+        for g in sorted([g for g in left if not (k == 4 and g.get('contains_capital'))], key=mscore, reverse=True)[:nh]:
             g['terrain'] = 'hills'
             left.remove(g)
         if 'plains' in q:
@@ -1019,6 +1019,8 @@ def assign_types(regs, adj):
         nm = 2 if len(ks) >= 10 or k in (1, 2, 5) else 1
         for g in cand[:nm]:
             g['type'] = 'mine'
+            if g['terrain'] not in ('hills', 'mountains'):
+                g['terrain'] = 'hills'   # maden ocakları tepelik arazide
         # cities: big, non-mountain, away from capital
         capg = next(g for g in ks if g['type'] == 'capital')
         cand = sorted([g for g in free() if g['terrain'] != 'mountains'],
@@ -1705,9 +1707,13 @@ def write_preview(art, regs, edges, sea, rivers, roads_, klabels):
     for r in rivers:
         for poly in svg_path_points(r['d']):
             dr.line([tuple(p) for p in poly], fill=(60, 170, 255, 255), width=r['w'])
-    for rd in roads_:
-        for poly in svg_path_points(rd['d']):
-            dr.line([tuple(p) for p in poly], fill=(120, 80, 40, 150), width=1)
+    for e in edges:
+        ga, gb = regs[e['a']], regs[e['b']]
+        col = (255, 255, 255, 200) if e['pass_'] else ((90, 190, 255, 200) if e['river'] else (255, 225, 140, 120))
+        dr.line([(ga['cx'], ga['cy']), (gb['cx'], gb['cy'])], fill=col, width=1)
+        if e['bridge']:
+            mx, my = (ga['cx'] + gb['cx']) / 2, (ga['cy'] + gb['cy']) / 2
+            dr.rectangle([mx - 2, my - 2, mx + 2, my + 2], fill=(90, 190, 255, 255))
     for e in edges:
         col = (255, 255, 255, 255) if e['pass_'] else ((70, 160, 255, 255) if e['river'] else (20, 20, 20, 230))
         w = 3 if (e['pass_'] or e['river']) else 2
