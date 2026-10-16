@@ -2,6 +2,7 @@
 // Oyuncu kimliği (token) yalnızca bu tarayıcıda saklanır; aynı tarayıcıyla geri dönen oyuncu kaldığı yerden devam eder.
 // Statik yayında (ör. GitHub Pages) alt klasörde çalışılsa da API sitenin kökündedir.
 const API = new URL('/api/rooms', location.origin).href;
+import { HostTransport, GuestTransport, hostedRoom } from './p2p.js';
 const POLL_MS = 1500;
 const tokenKey = code => 'frontiers-v3-room-' + code;
 const LAST_KEY = 'frontiers-v3-last-room';
@@ -10,7 +11,40 @@ export const storedToken = code => { try { return localStorage.getItem(tokenKey(
 export const lastRoom = () => { try { const c = localStorage.getItem(LAST_KEY); return c && storedToken(c) ? c : null; } catch { return null; } };
 export function forgetRoom(code) { try { localStorage.removeItem(tokenKey(code)); if (localStorage.getItem(LAST_KEY) === code) localStorage.removeItem(LAST_KEY); } catch { /* yok say */ } }
 
-async function request(method, { code, token, input, probe } = {}) {
+// Sunucu var mı? (statik yayında /api/rooms yoktur → tarayıcıdan tarayıcıya P2P odalar kullanılır)
+let serverOk = null;
+async function hasServer() {
+  if (serverOk !== null) return serverOk;
+  try {
+    const r = await fetch(`${API}?code=00000000&probe=1`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    serverOk = (r.headers.get('content-type') ?? '').includes('json');
+  } catch { serverOk = false; }
+  return serverOk;
+}
+const transports = new Map(); // oda kodu → P2P taşıyıcı
+let pendingHost = null;
+async function transportFor(code, { create = false } = {}) {
+  if (await hasServer()) return null;
+  if (create) { pendingHost = new HostTransport(); return pendingHost; }
+  if (transports.has(code)) return transports.get(code);
+  const t = hostedRoom(code) ? new HostTransport(code) : new GuestTransport(code);
+  if (t instanceof HostTransport) await t.listen().catch(() => {});
+  transports.set(code, t);
+  return t;
+}
+export const isP2P = code => { const t = transports.get(code); return t instanceof HostTransport ? 'host' : t ? 'guest' : null; };
+
+async function request(method, opts = {}) {
+  const t = await transportFor(opts.code ?? opts.input?.code, { create: opts.input?.op === 'create' });
+  if (t) {
+    const v = await t.request(method, opts);
+    if (t === pendingHost && v?.code) { transports.set(v.code, t); pendingHost = null; }
+    return v;
+  }
+  return httpRequest(method, opts);
+}
+
+async function httpRequest(method, { code, token, input, probe } = {}) {
   const url = method === 'GET' ? `${API}?code=${encodeURIComponent(code)}${probe ? '&probe=1' : ''}` : API;
   let r;
   try {

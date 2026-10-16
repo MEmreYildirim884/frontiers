@@ -1473,7 +1473,7 @@ def shifted_detail(img, mask, shifts=((15, 11), (-15, -11), (13, -14), (-13, 14)
     return out
 
 
-def clean_art(img, K):
+def clean_art(img, K, legacy=False):
     """Remove crests/labels (patch + Poisson clone) and painted border lines (inpaint + detail)."""
     out = img.copy()
     lms = label_mask(img)
@@ -1532,11 +1532,29 @@ def clean_art(img, K):
             out[y0:y1, x0:x1][m[y0:y1, x0:x1]] = src[m[y0:y1, x0:x1]]
     # stray gold fragments (pieces of cloned border lines) around the removed labels
     hz = cv2.cvtColor(out, cv2.COLOR_BGR2HSV).astype(int)
-    stray = (hz[..., 0] >= 12) & (hz[..., 0] <= 36) & (hz[..., 1] > 50) & (hz[..., 2] > 140) & (K != 4) & (K >= 0)
-    stray |= (hz[..., 0] <= 36) & (hz[..., 1] > 150) & (hz[..., 2] > 175) & (K != 4) & (K >= 0)
-    stray &= cv2.dilate(allm.astype(np.uint8), disk(6)).astype(bool)
-    stray = cv2.dilate(stray.astype(np.uint8), disk(2))
-    out = cv2.inpaint(out, stray * 255, 4, cv2.INPAINT_TELEA)
+    if legacy:
+        # v3.0 analysis variant: the region data (terrain/type/elevation in map.js) was derived from this
+        # version of the cleaned art; kept so map.js stays byte-identical while the output art improves.
+        stray = (hz[..., 0] >= 12) & (hz[..., 0] <= 36) & (hz[..., 1] > 50) & (hz[..., 2] > 140) & (K != 4) & (K >= 0)
+        stray |= (hz[..., 0] <= 36) & (hz[..., 1] > 150) & (hz[..., 2] > 175) & (K != 4) & (K >= 0)
+        stray &= cv2.dilate(allm.astype(np.uint8), disk(6)).astype(bool)
+        stray = cv2.dilate(stray.astype(np.uint8), disk(2))
+        out = cv2.inpaint(out, stray * 255, 4, cv2.INPAINT_TELEA)
+    else:
+        # only small, clearly gold fragments in kingdoms whose terrain is never gold; refilled with texture
+        nongold = np.isin(K, [0, 1, 2, 3])
+        stray = (hz[..., 0] >= 18) & (hz[..., 0] <= 36) & (hz[..., 1] > 60) & (hz[..., 2] > 150) & nongold
+        stray |= (hz[..., 0] <= 36) & (hz[..., 1] > 160) & (hz[..., 2] > 180) & nongold
+        stray &= cv2.dilate(allm.astype(np.uint8), disk(6)).astype(bool)
+        SL, ns = ndi.label(stray)
+        if ns:
+            ssz = ndi.sum(stray, SL, range(1, ns + 1))
+            stray = np.isin(SL, 1 + np.where(ssz <= 250)[0])
+        stray = cv2.dilate(stray.astype(np.uint8), disk(2)).astype(bool)
+        base = cv2.inpaint(out, stray.astype(np.uint8) * 255, 3, cv2.INPAINT_TELEA).astype(np.float32)
+        det = shifted_detail(out, stray)
+        soft = cv2.GaussianBlur(stray.astype(np.float32), (0, 0), 0.8)[..., None]
+        out = np.clip(out * (1 - soft) + np.clip(base + det, 0, 255) * soft, 0, 255).astype(np.uint8)
     bm = border_line_mask(out, K) & ~allm
     base = cv2.inpaint(out, bm.astype(np.uint8) * 255, 4, cv2.INPAINT_TELEA).astype(np.float32)
     det = shifted_detail(out, bm)
@@ -1794,7 +1812,7 @@ def main():
     WL, _ = ndi.label(wat)
     frame_ids = set(np.unique(np.concatenate([WL[0], WL[-1], WL[:, 0], WL[:, -1]]))) - {0}
     open_sea = np.isin(WL, list(frame_ids))
-    clean, cm = clean_art(img, K)
+    clean, cm = clean_art(img, K, legacy=True)   # analysis copy (region data)
     art = recolor(clean, K)
     dbg('10_mask.png', np.where(cm[..., None], np.array([0, 0, 255], np.uint8), img))
     feats = feature_maps(art, cv2.cvtColor(art, cv2.COLOR_BGR2HSV))
@@ -1852,7 +1870,11 @@ def main():
             print(f"   r{g['id']:2d} k{g['kingdom']} {g['terrain']:9s} {g['type']:10s} rock={g['rock']:.2f} snow={g['snow']:.2f} "
                   f"forest={g['forest']:.2f} farm={g['farm']:.2f} elev={g['elevation']:.2f} coast={g['coastal']} {g['name']}")
     report(regs, adj, edges, sea_links, rivers)
-    write_art(img, art, K, R, regs, feats, sea)
+    oclean, _ = clean_art(img, K)                 # output art
+    art = recolor(oclean, K)
+    ofeats = feature_maps(art, cv2.cvtColor(art, cv2.COLOR_BGR2HSV))
+    ofeats['trees'] = forest_mask(art, R >= 0) | feature_maps(oclean, cv2.cvtColor(oclean, cv2.COLOR_BGR2HSV))['forest']
+    write_art(img, art, K, R, regs, ofeats, sea)
     write_js(regs, adj, edges, sea_links, coast_d, rivers, roads_, klabels)
     write_preview(art, regs, edges, sea_links, rivers, roads_, klabels)
     print('wrote', OUT_JS, 'and assets in', OUT_ASSETS)

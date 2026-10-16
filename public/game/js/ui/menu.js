@@ -7,7 +7,7 @@ import { audio } from '../audio/audio.js';
 import { hasSave, clearSave } from '../save.js';
 import { resetTutorial } from './tutorial.js';
 import { openCodex } from './codex.js';
-import { OnlineSession, lastRoom, forgetRoom } from '../net/online.js';
+import { OnlineSession, lastRoom, forgetRoom, isP2P } from '../net/online.js';
 
 const TRAITS = [
   'Kuzeybatı. Tepeler ve kıyı; güçlü ağır süvari geleneği.',
@@ -163,7 +163,7 @@ export class Menu {
         <div class="field"><label for="m-code">Oda kodu</label><input id="m-code" class="code-input" maxlength="8" placeholder="ABCD1234" value="${esc(prefillCode)}" autocomplete="off" spellcheck="false"></div>
         <button class="btn btn-primary btn-big" id="m-join">Odaya Katıl ${icon('arrow')}</button>
       </div>
-      <p class="note">Çevrim içi odalar oyun sunucusuyla çalışır (<code>npm run local</code> ya da Cloudflare sürümü). GitHub Pages gibi statik yayında sunucu yoktur: arkadaşlarınla aynı bilgisayarda <b>Aynı Ekranda</b> modunu kullan.</p>
+      <p class="note">Sunucu gerekmez: odayı kuranın tarayıcısı oyunu yönetir, arkadaşların davet bağlantısıyla doğrudan ona bağlanır. <b>Odayı kuranın oyun sekmesi açık kalmalı.</b> Aynı bilgisayarda oynamak için <b>Aynı Ekranda</b> modu da var.</p>
       <footer class="pf"><button class="btn" data-back>${icon('arrow', 'flip')} Geri</button><button class="btn" id="m-hotseat">${icon('users')} Aynı Ekranda Oyna</button><span class="muted small">Sıra kimdeyse yalnızca o oynar; diğerleri canlı izler.</span></footer>`);
     $('#m-hotseat', card).onclick = () => { audio.sfx('click'); this.single(true); };
     const sync = () => {
@@ -210,12 +210,13 @@ export class Menu {
   lobby(session) {
     const v = session.view, me = v.players.find(p => p.id === v.me), host = session.isHost;
     const allReady = v.players.every(p => p.seat !== null && p.ready);
-    const invite = new URL('/?room=' + v.code, location.origin).href;
+    const invite = new URL('?room=' + v.code, location.href.split('?')[0]).href;
     const card = this.openPanel('lobby', `
       <header class="ph"><h2>${icon('users')} Oda <span class="room-code">${esc(v.code)}</span></h2>
         <p>Kodu ya da davet bağlantısını arkadaşlarına gönder. Herkes bir ülke seçip <b>Hazır</b> deyince oda kurucusu başlatır.</p>
         <div class="invite"><input readonly value="${esc(invite)}" id="l-url" aria-label="Davet bağlantısı"><button class="btn btn-small" id="l-copy">${icon('copy')} Kopyala</button></div>
         ${session.online ? '' : '<p class="warn-text">Bağlantı bekleniyor…</p>'}
+        ${isP2P(v.code) === 'host' ? '<p class="note">Odayı sen kurdun: oyun senin tarayıcında çalışıyor. Oyun bitene kadar bu sekmeyi kapatma.</p>' : ''}
       </header>
       <h3 class="sub">Ülkeler</h3>
       <div class="kingdom-grid lobby-grid">${KINGDOMS.map(k => {
