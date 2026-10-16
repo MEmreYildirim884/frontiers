@@ -1,7 +1,7 @@
 // Arayüz ortak parçaları: bayrak, çubuklar, birlik satırları, sayı biçimi.
 import * as G from '../rules/index.js';
 import { esc } from './dom.js';
-import { flagUrl, unitIcon } from './art.js';
+import { flagUrl, unitSprite, rulerUrl } from './art.js';
 
 export const K = G.KINGDOMS;
 export const fmt = n => Math.round(n ?? 0).toLocaleString('tr-TR');
@@ -23,12 +23,12 @@ export const unitLabel = (t, n) => {
   return `${fmt(n)} ${U.cls === 'art' ? 'top' : U.cls === 'cav' ? 'atlı' : 'asker'}`;
 };
 
-export function unitRows(units, { lost = null, editable = false, max = null } = {}) {
+export function unitRows(units, { lost = null, editable = false, max = null, owner = 0 } = {}) {
   const rows = G.UNIT_ORDER.filter(t => (units[t] ?? 0) > 0 || (lost?.[t] ?? 0) > 0);
   if (!rows.length) return '<p class="muted">Birlik yok.</p>';
   return `<table class="units-tbl"><tbody>${rows.map(t => {
     const U = G.UNITS[t], n = units[t] ?? 0;
-    return `<tr><td class="ut-ico">${unitIcon(t)}</td><td class="ut-name">${U.name}<small>${(n / U.pack).toFixed(n % U.pack ? 1 : 0).replace('.', ',')} paket</small></td>
+    return `<tr><td class="ut-ico"><img src="${unitSprite(owner, t)}" alt="" loading="lazy"></td><td class="ut-name">${U.name}<small>${(n / U.pack).toFixed(n % U.pack ? 1 : 0).replace('.', ',')} paket</small></td>
       <td class="ut-n"><b>${unitLabel(t, n)}</b>${lost?.[t] ? `<small class="bad">−${fmt(lost[t])}</small>` : ''}</td>
       ${editable ? `<td class="ut-edit"><input type="number" min="0" max="${max?.[t] ?? n}" value="0" data-split="${t}" aria-label="${U.name} ayır"></td>` : ''}</tr>`;
   }).join('')}</tbody></table>`;
@@ -48,3 +48,6 @@ export function fuzzUnits(units, exact) {
   }
   return out;
 }
+
+export const unitImg = (k, t, cls = '') => `<img class="usprite ${cls}" src="${unitSprite(k, t)}" alt="" loading="lazy">`;
+export const ruler = (k, cls = '') => `<img class="ruler ${cls}" src="${rulerUrl(k)}" alt="" loading="lazy" style="--c:${K[k]?.color}">`;

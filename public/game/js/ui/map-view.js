@@ -3,7 +3,8 @@
 // Görseller savaş hesaplarından bağımsızdır: animasyon sayısı gerçek gücü değiştirmez.
 import * as MAP from '../data/map.js';
 import * as G from '../rules/index.js';
-import { cityModel, fortModel, armyFormation, siegeCamp, siegeBattery, cannonShot, smokePuff, explosion, flagUrl, bridgeIcon, passIcon } from './art.js';
+import * as ART from './art.js';
+const { cityModel, fortModel, armyFormation, siegeCamp, siegeBattery, cannonShot, smokePuff, explosion, flagUrl, bridgeIcon, passIcon } = ART;
 
 const { REGIONS, EDGES, SEA_LINKS, COAST, MAP_W, MAP_H } = MAP;
 const RIVERS = MAP.RIVERS ?? [], ROADS = MAP.ROADS ?? [], KLABELS = MAP.KINGDOM_LABELS ?? [];
@@ -44,21 +45,35 @@ export class MapView {
     this.onArmyClick = onArmyClick;
     this.onRegionContext = onRegionContext;
     this.mode = 'political';
-    this.view = { x: -10, y: -10, w: MAP_W + 20, h: MAP_H + 20 };
-    this.home = { ...this.view };
+    this.home = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+    this.view = { ...this.home };
     this.cache = { settle: [], siege: [] };
     this.armyEls = new Map();
     this.lod = 0;
     this.build();
     this.bindPanZoom();
-    this.applyView();
+    this.fitHome(true);
+    this.ro = new ResizeObserver(() => this.fitHome());
+    this.ro.observe(container);
     this.siegeTimer = setInterval(() => this.siegeAmbience(), 2600);
   }
 
-  destroy() { clearInterval(this.siegeTimer); cancelAnimationFrame(this.anim); }
+  destroy() { clearInterval(this.siegeTimer); cancelAnimationFrame(this.anim); this.ro?.disconnect(); }
+
+  // Harita her zaman ekranı doldurur: görünüm kutusu kabın en-boy oranına uyar, harita dışı hiç görünmez.
+  fitHome(reset = false) {
+    const w = this.container.clientWidth || 1600, h = this.container.clientHeight || 900;
+    const ar = w / h;
+    const z = reset ? 1 : this.zoomFactor();
+    const cx = this.view.x + this.view.w / 2, cy = this.view.y + this.view.h / 2;
+    this.home = MAP_W / MAP_H > ar ? { x: (MAP_W - MAP_H * ar) / 2, y: 0, w: MAP_H * ar, h: MAP_H } : { x: 0, y: (MAP_H - MAP_W / ar) / 2, w: MAP_W, h: MAP_W / ar };
+    const vw = this.home.w / Math.max(1, z), vh = vw / ar;
+    this.view = reset ? { ...this.home } : { x: cx - vw / 2, y: cy - vh / 2, w: vw, h: vh };
+    this.clamp(); this.applyView();
+  }
 
   build() {
-    const root = svg('svg', { class: 'map-svg mode-political', viewBox: this.vb(), preserveAspectRatio: 'xMidYMid meet', role: 'img', 'aria-label': 'Strateji haritası' });
+    const root = svg('svg', { class: 'map-svg mode-political', viewBox: this.vb(), preserveAspectRatio: 'xMidYMid slice', role: 'img', 'aria-label': 'Strateji haritası' });
     root.innerHTML = `<defs>
       <filter id="m-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter>
       <filter id="m-shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".7"/></filter>
@@ -111,9 +126,10 @@ export class MapView {
     this.labels = REGIONS.map(r => {
       const m = G.META[r.id];
       const g = svg('g', { class: 'rlabel', transform: `translate(${m.x},${m.y})` }, this.labelLayer);
-      const t = svg('text', { class: 'region-name', 'text-anchor': 'middle', y: 3 }, g);
+      const inner = svg('g', { class: 'settle-scale', transform: 'scale(.9)' }, g);
+      const t = svg('text', { class: 'region-name', 'text-anchor': 'middle', y: 3 }, inner);
       t.textContent = r.name;
-      const sub = svg('text', { class: 'region-sub lod3-up', 'text-anchor': 'middle', y: 10 }, g);
+      const sub = svg('text', { class: 'region-sub lod3-up', 'text-anchor': 'middle', y: 10 }, inner);
       return { g, t, sub };
     });
     this.settleEls = REGIONS.map(r => svg('g', { class: 'settle', transform: `translate(${G.META[r.id].cx},${G.META[r.id].cy})` }, this.settleLayer));
@@ -138,7 +154,17 @@ export class MapView {
   applyView() {
     this.svg.setAttribute('viewBox', this.vb());
     const z = this.zoomFactor();
-    const lod = z < 1.55 ? 1 : z < 2.6 ? 2 : z < 4.2 ? 3 : 4;
+    const lod = z < 1.3 ? 1 : z < 1.7 ? 2 : z < 2.1 ? 3 : 4;
+    // Ordular ve yerleşimler ekranda okunur boyutta kalır (yakınlaştıkça haritaya göre küçülür).
+    const inv = 1 / z;
+    if (Math.abs((this.inv ?? 0) - inv) > 0.02) {
+      this.inv = inv;
+      const a = (1.9 * Math.pow(z, -0.62)).toFixed(3), st = (1.05 * Math.pow(z, -0.5)).toFixed(3);
+      this.svg.querySelectorAll('.army-scale').forEach(g => g.setAttribute('transform', `scale(${g.classList.contains('gar') ? (a * 0.62).toFixed(3) : a})`));
+      this.svg.querySelectorAll('.settle-scale').forEach(g => g.setAttribute('transform', `scale(${st})`));
+      this.armyK = a; this.settleK = st;
+      if (this.state && this.lastOpts) { this.instant = true; this.renderArmies(this.state, this.lastOpts); this.instant = false; }
+    }
     if (lod !== this.lod) {
       this.svg.classList.remove('lod-1', 'lod-2', 'lod-3', 'lod-4');
       this.svg.classList.add(`lod-${lod}`);
@@ -266,16 +292,17 @@ export class MapView {
       const b = st.buildings ?? {};
       const size = Math.min(4, 1 + (b.market ?? 0) + (b.factory ?? 0) + (m.pop > 140 ? 1 : 0) + (b.railway ? 1 : 0) - (m.type === 'village' ? 1 : 0));
       const integ = st.fort ? G.integrity(s, i) : 1;
-      const key = [st.owner, st.fort, Math.round(integ * 8), st.siege?.breached ? 1 : 0, st.siege ? 1 : 0, size, st.build?.b ?? ''].join('|');
+      const key = [st.owner, st.fort, Math.round(integ * 8), st.build ? 1 : 0, st.siege?.breached ? 1 : 0, st.siege ? 1 : 0, size, st.build?.b ?? ''].join('|');
       if (this.cache.settle[i] === key) return;
       this.cache.settle[i] = key;
-      const fortX = m.type === 'village' || m.type === 'mine' ? 0 : 13;
-      const culture = m.kingdom;
-      const fort = st.fort ? `<g class="fort-model" transform="translate(${fortX},${-2}) scale(${0.42 + st.fort * 0.03})">${fortModel(st.fort, st.owner, { wall: integ, breached: !!st.siege?.breached, besieged: !!st.siege })}</g>` : '';
-      const city = `<g class="city-model" transform="translate(${st.fort ? -6 : 0},2) scale(.5)">${cityModel(this.settlementKind(i), Math.max(1, size), culture)}</g>`;
-      const icon = `<g class="settle-icon lod1-only">${m.type === 'capital' ? '<path class="cap-star" d="M0,-7 L2,-2.2 7,-2.2 3,1 4.4,6 0,3 -4.4,6 -3,1 -7,-2.2 -2,-2.2Z"/>' : st.fort ? `<rect class="fort-dot" x="-3.5" y="-3.5" width="7" height="7" transform="rotate(45)"/>` : '<circle class="town-dot" r="2.4"/>'}</g>`;
-      const crane = st.build ? `<g class="building-site lod3-up" transform="translate(-14,-10) scale(.5)"><path d="M0,0 V-18 H10 M0,-16 L8,-16 M9,-18 V-10" fill="none" stroke="#e6c46a" stroke-width="1.4"/></g>` : '';
-      this.settleEls[i].innerHTML = `${icon}<g class="settle-detail lod2-up">${city}${fort}${crane}</g>`;
+      const dmg = !st.fort ? 0 : integ < 0.25 || st.siege?.breached ? 3 : integ < 0.5 ? 2 : integ < 0.8 ? 1 : 0;
+      const fw = 24 + st.fort * 6, fh = fw * 0.75;
+      const fort = st.fort ? `<image class="fort-sprite" href="${dmg ? ART.fortDamageSprite(dmg) : ART.fortSprite(st.fort)}" x="${-fw / 2}" y="${-fh + 4}" width="${fw}" height="${fh}" preserveAspectRatio="xMidYMax meet"/>${st.siege ? '<g class="fort-smoke">' + smokePuff(-4, -fh + 8, 0.5) + '</g>' : ''}` : '';
+      const kind = m.type === 'capital' ? 'capital' : m.type === 'port' ? 'port' : m.type === 'mine' ? 'mine' : m.type === 'industrial' ? 'factory' : null;
+      const city = !st.fort && kind ? `<image class="city-sprite" href="${ART.buildingSprite(kind)}" x="-13" y="-16" width="26" height="20" preserveAspectRatio="xMidYMax meet"/>` : '';
+      const crane = st.build ? `<g class="building-site" transform="translate(${-fw / 2 - 4},-10) scale(.5)"><path d="M0,0 V-18 H10 M0,-16 L8,-16 M9,-18 V-10" fill="none" stroke="#e6c46a" stroke-width="1.4"/></g>` : '';
+      const icon = m.type === 'capital' ? '<path class="cap-star" transform="translate(0,-34) scale(.8)" d="M0,-7 L2,-2.2 7,-2.2 3,1 4.4,6 0,3 -4.4,6 -3,1 -7,-2.2 -2,-2.2Z"/>' : '';
+      this.settleEls[i].innerHTML = `<g class="settle-scale" transform="scale(${this.settleK ?? 0.9})">${icon}<g class="settle-detail">${city}${fort}${crane}</g></g>`;
     });
   }
 
@@ -327,15 +354,38 @@ export class MapView {
 
   armyPos(s, a) {
     const m = G.META[a.region];
-    const here = s.armies.filter(x => x.region === a.region);
+    const here = s.armies.filter(x => x.region === a.region && x.stance !== 'garrison');
+    const k = +(this.armyK ?? 1.9);
+    if (a.stance === 'garrison') {
+      const g = s.armies.filter(x => x.region === a.region && x.stance === 'garrison');
+      return { x: m.cx + 14 * k + g.indexOf(a) * 8 * k, y: m.cy - 22 * k };
+    }
     const idx = here.indexOf(a), n = here.length;
-    const ang = (idx - (n - 1) / 2) * 0.9 + Math.PI / 2.2;
-    const garrison = a.stance === 'garrison';
-    const r = garrison ? 3 : 20;
-    return { x: m.cx + Math.cos(ang) * r * (garrison ? 1 : 1.25) - (garrison ? 0 : 4), y: m.cy + Math.sin(ang) * r * 0.7 + (garrison ? -10 : 6) };
+    const ang = Math.PI / 2 + (idx - (n - 1) / 2) * 0.95;
+    const r = 26 * k;
+    return { x: m.cx + Math.cos(ang) * r * 1.4, y: m.cy + 10 * k + Math.sin(ang) * r * 0.5 };
+  }
+
+  // Ordu temsili: ülkenin boyalı asker görselleri (varsa) ya da SVG düzeni. Sayı ve bayrak her zaman okunur.
+  armyArt(a) {
+    const u = a.units, men = G.manOf(u);
+    const inf = ['guard', 'grenadier', 'line', 'light', 'militia', 'sapper'].filter(t => u[t] > 0).sort((x, y) => u[y] - u[x])[0];
+    const cav = ['cuirassier', 'hussar'].filter(t => u[t] > 0).sort((x, y) => u[y] - u[x])[0];
+    const gun = ['siege', 'field'].find(t => u[t] > 0);
+    if (!ART.unitSprite) return `<g class="formation" transform="scale(.62)">${armyFormation(u, a.owner, {})}</g>`;
+    const img = (t, x, y, w, h, cls = '') => `<image class="sprite ${cls}" href="${ART.unitSprite(a.owner, t)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet"/>`;
+    let html = '';
+    if (gun) html += img(gun, -30, -20, 26, 20, 'gun');
+    if (inf) {
+      const copies = men < 300 ? 1 : men < 1200 ? 2 : 3;
+      for (let i = copies - 1; i >= 0; i--) html += img(inf, -11 + i * 7 - (copies - 1) * 3.5, -30 - i * 1.5, 18, 30);
+    }
+    if (cav) html += img(cav, 6, -30, 26, 30, 'cav');
+    return `<g class="sprites">${html}</g>`;
   }
 
   renderArmies(s, opts) {
+    this.lastOpts = opts;
     const seen = new Set();
     const selArmy = opts.army ?? null;
     this.armySel = selArmy !== null ? s.armies.find(a => a.id === selArmy) ?? null : null;
@@ -355,32 +405,27 @@ export class MapView {
         const label = men >= 1000 ? (men / 1000).toFixed(men >= 10000 ? 0 : 1).replace('.', ',') + 'B' : String(men);
         const guns = (a.units.field ?? 0) + (a.units.siege ?? 0);
         const garrison = a.stance === 'garrison';
-        el.innerHTML = `
-          <g class="army-far lod1-only">
-            <path class="banner-pole" d="M0,2 V-14"/>
-            <image href="${flagUrl(a.owner, true)}" x="0.5" y="-14" width="13" height="8.7" preserveAspectRatio="xMidYMid slice"/>
-            <rect class="army-plate" x="-8" y="1.5" width="${16 + label.length * 1.2}" height="8" rx="2"/>
-            <text class="army-num" x="${label.length * 0.6}" y="7.6" text-anchor="middle">${label}</text>
+        const pw = 15 + label.length * 4.6 + (guns ? 12 : 0);
+        el.innerHTML = `<g class="army-scale ${garrison ? 'gar' : ''}" transform="scale(${((this.armyK ?? 1.9) * (garrison ? 0.62 : 1)).toFixed(3)})">
+          ${garrison ? '<path class="banner-pole" d="M0,0 V-16"/>' : `<ellipse class="army-shadow" cx="0" cy="1" rx="24" ry="4.5"/>${this.armyArt(a)}<path class="banner-pole" d="M-17,0 V-42"/>`}
+          <image class="army-flag" href="${flagUrl(a.owner, true)}" x="${garrison ? 0.5 : -16.5}" y="${garrison ? -16 : -42}" width="${garrison ? 11 : 16}" height="${garrison ? 7.3 : 10.6}" preserveAspectRatio="xMidYMid slice"/>
+          <g class="army-badge" transform="translate(0,${garrison ? 2 : 4})">
+            <rect class="army-plate" x="${-pw / 2}" y="0" width="${pw}" height="10" rx="3"/>
+            <text class="army-num" x="${guns ? -6 : 0}" y="7.6" text-anchor="middle">${label}</text>
+            ${guns ? `<text class="army-guns" x="${pw / 2 - 7}" y="7.4" text-anchor="middle">${guns}⊕</text>` : ''}
           </g>
-          <g class="army-near lod2-up">
-            ${garrison ? '' : `<g class="formation" transform="scale(.42)">${armyFormation(a.units, a.owner, {})}</g>`}
-            <g class="army-badge" transform="translate(${garrison ? 0 : -1},${garrison ? 0 : 8})">
-              <rect class="army-plate" x="-10" y="-4" width="20" height="7.5" rx="2"/>
-              <image href="${flagUrl(a.owner, true)}" x="-9.3" y="-3.3" width="5.4" height="3.8" preserveAspectRatio="xMidYMid slice"/>
-              <text class="army-num" x="2.5" y="1.8" text-anchor="middle">${label}</text>
-              ${guns ? `<text class="army-guns lod3-up" x="0" y="8.6" text-anchor="middle">${guns} top</text>` : ''}
-            </g>
-          </g>
-          <circle class="army-hit" r="${garrison ? 7 : 11}" cy="${garrison ? 0 : -2}"/>`;
+          <rect class="army-hit" x="-30" y="${garrison ? -18 : -44}" width="60" height="${garrison ? 32 : 60}"/>
+        </g>`;
         el.classList.toggle('garrison', garrison);
       }
       el.style.setProperty('--c', K[a.owner].color);
       const last = el.dataset.pos, now = `${pos.x.toFixed(1)},${pos.y.toFixed(1)}`;
-      if (last && last !== now) {
+      if (last && last !== now && !this.instant) {
         el.classList.add('marching');
         clearTimeout(el._t);
         el._t = setTimeout(() => el.classList.remove('marching'), 950);
       }
+      el.classList.toggle('instant', !!this.instant);
       el.dataset.pos = now;
       el.style.transform = `translate(${pos.x}px,${pos.y}px)`;
       el.classList.toggle('selected', a.id === selArmy);
@@ -420,7 +465,7 @@ export class MapView {
   // ——— Yakınlaştırma / kaydırma ———
   zoom(f, cx = this.view.x + this.view.w / 2, cy = this.view.y + this.view.h / 2, animate = false) {
     const v = this.view;
-    const w = Math.min(this.home.w * 1.05, Math.max(this.home.w / 4.6, v.w * f));
+    const w = Math.min(this.home.w, Math.max(this.home.w / 2.2, v.w * f));
     const h = w * (this.home.h / this.home.w);
     const target = { x: cx - (cx - v.x) * (w / v.w), y: cy - (cy - v.y) * (h / v.h), w, h };
     if (animate) return this.animateTo(target);
@@ -441,8 +486,11 @@ export class MapView {
   reset() { this.animateTo({ ...this.home }); }
   clamp() {
     const v = this.view, H = this.home;
-    v.x = Math.max(H.x - v.w * 0.25, Math.min(H.x + H.w - v.w * 0.75, v.x));
-    v.y = Math.max(H.y - v.h * 0.25, Math.min(H.y + H.h - v.h * 0.75, v.y));
+    v.x = Math.max(0, Math.min(MAP_W - v.w, v.x));
+    v.y = Math.max(0, Math.min(MAP_H - v.h, v.y));
+    if (v.w > MAP_W) v.x = (MAP_W - v.w) / 2;
+    if (v.h > MAP_H) v.y = (MAP_H - v.h) / 2;
+    void H;
   }
   toMap(clientX, clientY) {
     const pt = this.svg.createSVGPoint();

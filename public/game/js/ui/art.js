@@ -127,6 +127,19 @@ function pal(k, o) {
 const ASSET_BASE = (() => { try { return new URL('../../assets/img/', import.meta.url).href; } catch { return 'assets/img/'; } })();
 export const flagUrl = (k, small = false) => `${ASSET_BASE}flags/${((k | 0) % 6 + 6) % 6}${small ? '-s' : ''}.jpg`;
 export const portraitUrl = (k, part) => `${ASSET_BASE}portraits/${((k | 0) % 6 + 6) % 6}-${part}.jpg`;
+// raster sprites cut from the painted atlases (tools/make-art-assets.py)
+const K6 = (k) => ((k | 0) % 6 + 6) % 6;
+const clampI = (v, lo, hi) => Math.max(lo, Math.min(hi, v | 0 || lo));
+export const BUILDING_IDS = ['village', 'town', 'capital', 'barracks', 'stable', 'foundry', 'academy', 'mine', 'factory', 'port', 'depot', 'railway', 'sapperSchool'];
+export const ICON_IDS = ['infantry', 'cavalry', 'artillery', 'engineer', 'fort', 'gold', 'food', 'population', 'morale', 'diplomacy', 'trade', 'mine', 'build', 'siege', 'war'];
+export const unitSprite = (k, type) => `${ASSET_BASE}units/${K6(k)}-${UNIT_TYPES.includes(type) ? type : 'line'}.png`;
+export const rulerUrl = (k) => `${ASSET_BASE}portraits/ruler-${K6(k)}.jpg`;
+export const generalUrl = (k, i = 0) => `${ASSET_BASE}portraits/generals-${K6(k)}-${((i | 0) % 4 + 4) % 4}.jpg`;
+export const fortSprite = (level) => `${ASSET_BASE}forts/${clampI(level, 1, 5)}.png`;
+export const fortDamageSprite = (stage) => `${ASSET_BASE}forts/dmg-${clampI(stage, 1, 3)}.png`;
+export const buildingSprite = (id) => `${ASSET_BASE}buildings/${id === 'market' || !BUILDING_IDS.includes(id) ? 'town' : id}.png`;
+export const eventUrl = (id) => `${ASSET_BASE}events/${['victory', 'defeat', 'peace'].includes(id) ? id : 'victory'}.jpg`;
+export const iconUrl = (id) => `${ASSET_BASE}icons/${ICON_IDS.includes(id) ? id : 'war'}.png`;
 
 // ------------------------------------------------------------------ headgear
 // (hx,hy) head centre, head radius ~1.12, facing right

@@ -2,7 +2,7 @@
 // Tablolar sabit metin değil; oyunun gerçek savaş motoruyla (estimateBattle) hesaplanır.
 import * as G from '../rules/index.js';
 import { $, $$, esc, modal } from './dom.js';
-import { unitIcon, unitCardArt } from './art.js';
+import { unitIcon, unitSprite } from './art.js';
 import { K, fmt, pct } from './common.js';
 import { audio } from '../audio/audio.js';
 
@@ -33,7 +33,7 @@ function unitsTab(el, k, focus) {
       const U = G.UNITS[t];
       const counters = Object.entries(G.COUNTERS[t] ?? {}).filter(([, v]) => v > 1.05).map(([v, x]) => `${G.UNITS[v].short} ×${x}`).join(', ');
       return `<article class="cu ${focus === t ? 'focus' : ''}" id="cu-${t}" style="--c:${K[k].color}">
-        <div class="cu-art">${unitCardArt(t, k)}</div>
+        <div class="cu-art">${G.KINGDOMS.map((_, kk) => `<img src="${unitSprite(kk, t)}" alt="" loading="lazy" class="${kk === k ? 'mine' : ''}">`).join('')}</div>
         <div class="cu-body"><h3>${unitIcon(t)} ${U.name}</h3>
           <div class="cu-line"><b>${U.pack} ${U.cls === 'art' ? 'top' : U.cls === 'cav' ? 'atlı' : 'asker'}</b> / paket · ${fmt(U.cost)} altın · bakım ${U.upkeep}/tur · ${U.time} tur · hız ${U.speed}${U.iron ? ` · ${U.iron} demir` : ''}${U.req ? ` · gerekli: ${Object.entries(U.req).map(([b, l]) => `${G.BUILDINGS[b].name} ${l}`).join(', ')}` : ' · bina gerekmez'}</div>
           <div class="cu-cols"><div><h4 class="good">Güçlü olduğu</h4><ul>${U.good.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><h4 class="bad">Zayıf olduğu</h4><ul>${U.bad.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div>
@@ -73,8 +73,8 @@ function matrixTab(el, k) {
     setTimeout(() => {
       const M = computeMatrix(terrain, stance);
       const cell = v => `<td class="mx" style="--v:${v}" title="%${Math.round(v * 100)}">${Math.round(v * 100)}</td>`;
-      $('.mx-wrap', el).innerHTML = `<table class="matrix"><thead><tr><th>Saldıran ↓ / Savunan →</th>${G.UNIT_ORDER.map(t => `<th title="${G.UNITS[t].name}">${unitIcon(t)}<small>${G.UNITS[t].short}</small></th>`).join('')}</tr></thead>
-        <tbody>${G.UNIT_ORDER.map(a => `<tr><th>${unitIcon(a)} ${G.UNITS[a].short} <small>${packsFor(a)} pk</small></th>${G.UNIT_ORDER.map(d => cell(M[a][d])).join('')}</tr>`).join('')}</tbody></table>
+      $('.mx-wrap', el).innerHTML = `<table class="matrix"><thead><tr><th>Saldıran ↓ / Savunan →</th>${G.UNIT_ORDER.map(t => `<th title="${G.UNITS[t].name}"><img class="mx-sprite" src="${unitSprite(k, t)}" alt=""><small>${G.UNITS[t].short}</small></th>`).join('')}</tr></thead>
+        <tbody>${G.UNIT_ORDER.map(a => `<tr><th><img class="mx-sprite" src="${unitSprite(k, a)}" alt=""> ${G.UNITS[a].short} <small>${packsFor(a)} pk</small></th>${G.UNIT_ORDER.map(d => cell(M[a][d])).join('')}</tr>`).join('')}</tbody></table>
         <div class="mx-notes"><h4>Akılda tut</h4><ul>
           <li><b>Hazırlıklı tüfekli piyade</b> (Savunma Hattı duruşu) kare düzene geçer: ağır süvari hücumunu kırar.</li>
           <li><b>Ağır süvari</b> açık arazide düzensiz/morali bozuk piyadeyi dağıtır; orman ve dağda zayıflar, surlara hücum edemez.</li>

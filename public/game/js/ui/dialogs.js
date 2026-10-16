@@ -3,7 +3,7 @@ import * as G from '../rules/index.js';
 import { $, $$, esc, modal, toast } from './dom.js';
 
 
-import { K, fmt, sign, pct, kName, flag, bar, unitRows, fuzzUnits, terrainName } from './common.js';
+import { K, fmt, sign, pct, kName, flag, bar, unitRows, fuzzUnits, terrainName, ruler } from './common.js';
 import { audio } from '../audio/audio.js';
 
 const chanceCls = c => (c >= 0.7 ? 'good' : c >= 0.45 ? 'mid' : 'bad');
@@ -32,12 +32,12 @@ export function battlePreview(ui, army, to) {
   return new Promise(res => {
     modal({ title: 'Savaş Önizlemesi', wide: true, onClose: () => res(false), body: `
       <div class="bp3">
-        <div class="bp3-side">${flag(me, 36)}<b>${esc(army.name)}</b><small>${fmt(G.manOf(army.units))} asker</small>${unitRows(army.units)}</div>
+        <div class="bp3-side">${flag(me, 36)}<b>${esc(army.name)}</b><small>${fmt(G.manOf(army.units))} asker</small>${unitRows(army.units, { owner: me })}</div>
         <div class="bp3-mid"><div class="odds ${chanceCls(est.chance)}"><small>Tahmini zafer şansı</small><b>${pct(est.chance)}</b><span>${chanceText(est.chance)}</span></div>
           <p>Olası kayıpların: <b>${fmt(est.attLoss[0])}–${fmt(est.attLoss[1])}</b><br>Düşman kaybı: <b>${fmt(est.defLoss[0])}–${fmt(est.defLoss[1])}</b></p>
           <ul class="factors">${factors.map(f => `<li>${f}</li>`).join('')}</ul>
           <small class="muted">${est.sims} simülasyon. Sonuç kesin değildir; talih, moral ve zamanlama değişir.</small></div>
-        <div class="bp3-side">${flag(enemies[0].owner, 36)}<b>${kName(s, enemies[0].owner)}</b><small>${enemies.length} ordu · ${scout ? 'keşif var' : 'tahmini sayılar'}</small>${unitRows(fuzzUnits(d, scout))}</div>
+        <div class="bp3-side">${flag(enemies[0].owner, 36)}<b>${kName(s, enemies[0].owner)}</b><small>${enemies.length} ordu · ${scout ? 'keşif var' : 'tahmini sayılar'}</small>${unitRows(fuzzUnits(d, scout), { owner: enemies[0].owner })}</div>
       </div>`,
       actions: [{ label: 'Vazgeç', onClick: () => res(false) }, { label: 'Saldır!', danger: true, onClick: () => res(true) }] });
   });
@@ -55,13 +55,13 @@ export function assaultDialog(ui, id) {
     { units: sumUnits(g), morale: avg(g, 'morale'), supply: 100, owner: r.owner, stance: 'garrison' },
     G.battleContext(s, me, id, id, { fort, assault: true, siegeSetup: true }), 90, s.round * 17 + id);
   modal({ title: `Genel Hücum — ${esc(G.META[id].name)}`, wide: true, body: `
-    <div class="bp3"><div class="bp3-side">${flag(me, 36)}<b>Hücum birlikleri</b><small>süvari katılmaz</small>${unitRows(units)}</div>
+    <div class="bp3"><div class="bp3-side">${flag(me, 36)}<b>Hücum birlikleri</b><small>süvari katılmaz</small>${unitRows(units, { owner: me })}</div>
       <div class="bp3-mid"><div class="odds ${chanceCls(est.chance)}"><small>Tahmini başarı</small><b>${pct(est.chance)}</b><span>${chanceText(est.chance)}</span></div>
         <p>Olası kayıpların: <b>${fmt(est.attLoss[0])}–${fmt(est.attLoss[1])}</b></p>
         <ul class="factors"><li>${G.FORTS[r.fort].name}, sur ${pct(fort.integrity)} ${fort.breached ? '<b class="good">gedik açık</b>' : '<b class="bad">gedik yok: hücum çok kanlı olur</b>'}</li>
           <li>Garnizon verimi ${pct(fort.garrisonFactor)} · siper ${fort.trench}/${G.SIEGE.trenchMax}</li>
           ${r.fort >= 4 ? '<li>Büyük kalede garnizon iç kalede son savunma yapabilir.</li>' : ''}</ul></div>
-      <div class="bp3-side">${flag(r.owner, 36)}<b>Garnizon</b><small>${fmt(G.manOf(sumUnits(g)))} asker</small>${unitRows(sumUnits(g))}</div></div>`,
+      <div class="bp3-side">${flag(r.owner, 36)}<b>Garnizon</b><small>${fmt(G.manOf(sumUnits(g)))} asker</small>${unitRows(sumUnits(g), { owner: r.owner })}</div></div>`,
     actions: [{ label: 'Vazgeç' }, { label: 'Hücum Et!', danger: true, onClick: () => { audio.sfx('attack'); ui.send({ type: 'assault', region: id }); } }] });
 }
 
@@ -73,7 +73,7 @@ export function battleReport(ui, b) {
   const iWon = (b.attacker === me && win) || (b.defender === me && !win);
   const side = (p, x, title) => `<div class="br-side">${flag(p, 34)}<b>${kName(s, p)}</b><small>${title}</small>
     <div class="br-nums"><span>Başlangıç <b>${fmt(x.men0)}</b></span><span>Kayıp <b class="bad">${fmt(x.men0 - x.men1)}</b></span><span>Kalan <b>${fmt(x.men1)}</b></span></div>
-    ${unitRows(x.start, { lost: x.lost })}
+    ${unitRows(x.start, { lost: x.lost, owner: p })}
     <div class="br-m">Moral ${Math.round(x.morale0 * 100)} → <b>${Math.round(x.morale1 * 100)}</b> · verilen hasar ${fmt(x.dealt)} · ikmal %${x.supply}</div></div>`;
   const who = r => `${r.owner !== undefined ? kName(s, r.owner) + ' — ' : ''}${esc(r.army)}`;
   const retreats = (b.retreats ?? []).map(r => r.to === null ? `${who(r)} kaçacak yer bulamadı, ${fmt(r.lost)} asker esir düştü.` : r.to === 'kale' ? `${who(r)} kaleye çekildi.` : `${who(r)} ${esc(G.META[r.to].name)} bölgesine çekildi.`);
@@ -105,7 +105,7 @@ export function diplomacy(ui) {
     const truce = ts.find(t => t.type === 'truce');
     const pow = G.militaryPower(s, o), myPow = G.militaryPower(s, me) || 1;
     return `<div class="drow3 ${war ? 'war' : ''}" style="--c:${K[o].color}">
-      ${flag(o, 48)}
+      <div class="d-port">${ruler(o)}${flag(o, 30, 'd-flag')}</div>
       <div class="dinfo"><b>${kName(s, o)}</b> <small class="muted">${p.human ? 'Oyuncu' : G.PERSONALITIES[p.personality]?.name ?? ''}</small>
         <span class="rel">${war ? `<b class="bad">SAVAŞ</b> · skor ${G.warScore(s, me, o)}${G.hasTreaty(s, me, o, 'ceasefire') ? ' · ateşkes' : ''}` : '<b class="good">Barış</b>'}
         · güç ${pow > myPow * 1.3 ? '<span class="bad">senden güçlü</span>' : pow < myPow * 0.75 ? '<span class="good">senden zayıf</span>' : 'denk'} · itibar ${p.reputation}/10</span>

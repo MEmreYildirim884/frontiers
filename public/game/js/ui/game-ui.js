@@ -8,6 +8,8 @@ import { renderSide } from './panels.js';
 import { battlePreview, assaultDialog, battleReport, diplomacy, economy, armiesDialog, scoreboard, scoreTable, logDialog } from './dialogs.js';
 import { openCodex } from './codex.js';
 import { K, fmt, sign, kName, flag, bar } from './common.js';
+import { iconUrl, eventUrl } from './art.js';
+const ic = id => `<img src="${iconUrl(id)}" alt="">`;
 import { audio } from '../audio/audio.js';
 import { startTutorial, tutorialDone } from './tutorial.js';
 import { saveSlots, saveToSlot, exportSave } from '../save.js';
@@ -95,7 +97,8 @@ export class GameUI {
     on('zoom-out', () => this.map.zoom(1.35, undefined, undefined, true));
     on('zoom-fit', () => this.map.reset());
     on('toggle-left', () => this.root.classList.toggle('show-left'));
-    on('toggle-right', () => this.root.classList.toggle('show-right'));
+    on('toggle-right', () => { this.sideOverview = !this.root.classList.contains('side-open'); if (!this.sideOverview) this.clearSel(); this.refresh(); });
+    on('side-tab', () => { audio.sfx('click'); this.sideOverview = true; this.refresh(); });
     this.keyHandler = e => {
       if (this.root.hidden || modalOpen() || !$('#tutorial').hidden || e.target.matches('input, select, textarea')) return;
       const k = e.key.toLowerCase();
@@ -125,7 +128,7 @@ export class GameUI {
     $('#end-screen').hidden = true;
   }
 
-  clearSel() { this.sel.army = null; this.sel.region = null; this.splitMode = null; this.moves = null; }
+  clearSel() { this.sel.army = null; this.sel.region = null; this.splitMode = null; this.moves = null; this.sideOverview = false; }
 
   // ——— Etkileşim ———
   selectArmy(id, focus = false) {
@@ -337,7 +340,7 @@ export class GameUI {
     const fresh = next.log.filter(e => e.n > (prev.seq ?? 0));
     for (const e of fresh) {
       if (e.k === 'betrayal') audio.sfx('betray');
-      if (e.k === 'treaty') audio.sfx('diplomacy');
+      if (e.k === 'treaty') { audio.sfx('diplomacy'); if (/BARIŞ/.test(e.m) && (e.p === this.me || e.to === this.me)) modal({ title: 'Barış Antlaşması', body: `<div class="event-pop"><img src="${eventUrl('peace')}" alt=""><p>${esc(e.m)}</p></div>` }); }
       if (e.k === 'war' && (e.to === this.me || e.p === this.me)) { audio.sfx('attack'); toast(e.m, e.to === this.me ? 'error' : 'warn', 6000); }
       if (e.k === 'mission' || e.k === 'eliminate' || e.k === 'revolt') toast(e.m, e.p === this.me ? 'good' : 'info', 4500);
       if (e.k === 'conquest' && e.to === this.me) toast(e.m, 'error', 4500);
@@ -363,6 +366,8 @@ export class GameUI {
     this.renderMap();
     this.renderLegend();
     renderSide(this);
+    const open = this.sel.army !== null || this.sel.region !== null || !!this.sideOverview;
+    this.root.classList.toggle('side-open', open);
     this.renderBottom();
   }
 
@@ -372,15 +377,15 @@ export class GameUI {
     $('#tb-player').innerHTML = `${flag(me, 46)}<div><small>${s.finished ? 'Oyun bitti' : a === me ? 'Sıra sende' : `Sıra: ${esc(G.playerName(s, a))}`}</small><b style="color:${K[me].light}">${kName(s, me)}</b></div>`;
     const res = (ico, label, val, sub, tip, cls = '') => `<div class="res ${cls}" title="${esc(tip)}"><span class="res-ico">${ico}</span><div><small>${label}</small><b>${val}</b>${sub ? `<em>${sub}</em>` : ''}</div></div>`;
     $('#tb-res').innerHTML = [
-      res(icon('coin'), 'Hazine', fmt(pl.gold), `<span class="${rep.net >= 0 ? 'good' : 'bad'}">${sign(rep.net)}</span>`, `Gelir ${fmt(rep.income)} − gider ${fmt(rep.expense)} (ordu ${fmt(rep.army)}, bina ${fmt(rep.buildings)}${rep.interest ? `, faiz ${fmt(rep.interest)}` : ''})`, pl.gold < 0 ? 'neg' : ''),
-      res('↗', 'Gelir', fmt(rep.income), '', 'Tur başına vergi + ticaret + tazminat'),
-      res('↘', 'Gider', fmt(rep.expense), '', 'Ordu bakımı + bina/kale bakımı + faiz'),
-      res('👥', 'Nüfus', fmt(rep.pop) + ' B', '', 'Toplam nüfus (bin)'),
-      res('⚔', 'İnsan gücü', fmt(pl.manpower), `+${fmt(rep.manpower)}`, `Asker alınabilecek nüfus · üst sınır ${fmt(rep.manpowerCap)}`),
-      res('🌾', 'Erzak', fmt(pl.food), `<span class="${rep.foodNet >= 0 ? 'good' : 'bad'}">${rep.foodNet >= 0 ? '+' : ''}${rep.foodNet}</span>`, `Üretim ${rep.food} − ordu tüketimi ${rep.foodUse}`, pl.food < 20 ? 'neg' : ''),
-      res('⚒', 'Demir', fmt(pl.iron), `+${rep.iron}`, 'Top, ağır süvari, kale ve demir yolu için'),
-      res('⚖', 'İstikrar', Math.round(pl.stability), bar(pl.stability), 'Vergi ve insan gücü çarpanı; düşükse ayaklanma', pl.stability < 30 ? 'neg' : ''),
-      res('☠', 'Yorgunluk', Math.round(pl.weariness), '', 'Savaş yorgunluğu: istikrarı ve insan gücünü düşürür', pl.weariness > 50 ? 'neg' : ''),
+      res(ic('gold'), 'Hazine', fmt(pl.gold), `<span class="${rep.net >= 0 ? 'good' : 'bad'}">${sign(rep.net)}</span>`, `Gelir ${fmt(rep.income)} − gider ${fmt(rep.expense)} (ordu ${fmt(rep.army)}, bina ${fmt(rep.buildings)}${rep.interest ? `, faiz ${fmt(rep.interest)}` : ''})`, pl.gold < 0 ? 'neg' : ''),
+      res(ic('trade'), 'Gelir', fmt(rep.income), '', 'Tur başına vergi + ticaret + tazminat'),
+      res(ic('build'), 'Gider', fmt(rep.expense), '', 'Ordu bakımı + bina/kale bakımı + faiz'),
+      res(ic('population'), 'Nüfus', fmt(rep.pop) + ' B', '', 'Toplam nüfus (bin)'),
+      res(ic('infantry'), 'İnsan gücü', fmt(pl.manpower), `+${fmt(rep.manpower)}`, `Asker alınabilecek nüfus · üst sınır ${fmt(rep.manpowerCap)}`),
+      res(ic('food'), 'Erzak', fmt(pl.food), `<span class="${rep.foodNet >= 0 ? 'good' : 'bad'}">${rep.foodNet >= 0 ? '+' : ''}${rep.foodNet}</span>`, `Üretim ${rep.food} − ordu tüketimi ${rep.foodUse}`, pl.food < 20 ? 'neg' : ''),
+      res(ic('mine'), 'Demir', fmt(pl.iron), `+${rep.iron}`, 'Top, ağır süvari, kale ve demir yolu için'),
+      res(ic('morale'), 'İstikrar', Math.round(pl.stability), bar(pl.stability), 'Vergi ve insan gücü çarpanı; düşükse ayaklanma', pl.stability < 30 ? 'neg' : ''),
+      res(ic('war'), 'Yorgunluk', Math.round(pl.weariness), '', 'Savaş yorgunluğu: istikrarı ve insan gücünü düşürür', pl.weariness > 50 ? 'neg' : ''),
     ].join('');
     const season = G.seasonOf(s.round);
     $('#tb-date').innerHTML = `<span class="season s-${season.id}"></span><div><small>${s.config.maxRounds ? `Tur ${s.round}/${s.config.maxRounds}` : `Tur ${s.round}`}</small><b>${G.dateText(s.round)}</b></div>`;
@@ -392,7 +397,9 @@ export class GameUI {
 
   renderPlayers() {
     const s = this.s, me = this.me;
-    $('#players-panel').innerHTML = `<h3 class="panel-title">Devletler</h3>` + s.order.map(id => {
+    const pp = $('#players-panel');
+    pp.classList.toggle('collapsed', !!this.playersCollapsed);
+    pp.innerHTML = `<h3 class="panel-title" id="pp-toggle" title="Daralt / genişlet">${this.playersCollapsed ? '▸' : 'Devletler ▾'}</h3>` + s.order.map(id => {
       const p = s.players[id];
       const war = id !== me && G.atWar(s, me, id), ally = id !== me && G.allied(s, me, id);
       return `<div class="prow3 ${id === s.active ? 'active' : ''} ${p.alive ? '' : 'dead'} ${id === me ? 'me' : ''}" style="--c:${K[id].color}">
@@ -401,6 +408,7 @@ export class GameUI {
         ${war ? '<span class="rel-badge war" title="Savaşta">⚔</span>' : ally ? '<span class="rel-badge ally" title="Müttefik">⛨</span>' : ''}
         ${id === s.active && !s.finished ? '<span class="turn-arrow">◀</span>' : ''}</div>`;
     }).join('');
+    $('#pp-toggle').onclick = () => { this.playersCollapsed = !this.playersCollapsed; this.renderPlayers(); };
   }
 
   renderMap() {
@@ -457,7 +465,7 @@ export class GameUI {
     audio.stopMood(); audio.music('victory'); audio.sfx(win ? 'victory' : 'betray');
     const reason = { conquest: 'Bütün rakipler yıkıldı.', domination: 'Haritanın üçte ikisi tek elde.', alliance: 'Hayatta kalanların hepsi müttefik.', rounds: 'Tur sınırına ulaşıldı; en yüksek puan kazandı.' }[s.endReason] ?? '';
     const el = $('#end-screen');
-    el.innerHTML = `<div class="end-card"><p class="eyebrow">${esc(reason)}</p>
+    el.innerHTML = `<div class="end-card"><img class="end-event" src="${eventUrl(win ? 'victory' : 'defeat')}" alt=""><p class="eyebrow">${esc(reason)}</p>
       <h1 class="${win ? 'win' : 'lose'}">${win ? 'Zafer!' : s.players[this.me].alive ? 'Oyun Bitti' : 'Yenilgi'}</h1>
       <div class="end-winner">${flag(s.winner, 120)}<div><small>Kazanan</small><h2 style="color:${K[s.winner].light}">${kName(s, s.winner)}</h2></div></div>
       ${scoreTable(this, s, true)}

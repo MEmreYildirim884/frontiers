@@ -13,6 +13,10 @@
   .cell.dark { background: #1d1610; color: #e6c26a; }
   .cell svg { display: block; }
   section { margin-bottom: 18px; }
+  .sprow { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+  .sp { text-align: center; font-size: 10px; color: #c9b27a; }
+  .sp img { display: block; margin: 0 auto; }
+  h3 { color: #e6c26a; margin: 8px 0; font-size: 14px; }
   button { font: inherit; padding: 6px 14px; background: #6b4a2b; color: #fff; border: 1px solid #e6c26a; border-radius: 4px; cursor: pointer; }
   body.static .art-flash { animation: none !important; opacity: 1 !important; }
   body.static .art-smoke { animation: none !important; opacity: .45 !important; }
@@ -143,6 +147,19 @@ for (const pose of ['stand', 'march', 'fire']) {
   let h = '';
   for (const k of K) h += `<div class="cell"><img src="${A.flagUrl(k)}" width="180"><br><img src="${A.flagUrl(k, true)}"> ${['soldier', 'rider', 'commander', 'cannon', 'scene'].map((p) => `<img src="${A.portraitUrl(k, p)}" height="100">`).join('')}</div>`;
   sect('assets', 'Bayraklar & portreler', `<div class="grid">${h}</div>`);
+}
+// raster sprites
+{
+  const im = (u, h, t) => `<div class="sp"><img src="${u}" style="height:${h}px"><div>${t}</div></div>`;
+  let h = '<h3>Birlikler</h3>';
+  for (const k of [0, 1, 2, 3, 4, 5]) h += `<div class="sprow">${A.UNIT_TYPES.map((t) => im(A.unitSprite(k, t), 140, `${k}-${t}`)).join('')}</div>`;
+  h += '<h3>Kaleler</h3><div class="sprow">' + [1, 2, 3, 4, 5].map((l) => im(A.fortSprite(l), 150, 'seviye ' + l)).join('') + [1, 2, 3].map((d) => im(A.fortDamageSprite(d), 150, 'hasar ' + d)).join('') + '</div>';
+  h += '<h3>Binalar</h3><div class="sprow">' + [...A.BUILDING_IDS, 'market'].map((b) => im(A.buildingSprite(b), 120, b)).join('') + '</div>';
+  h += '<h3>Hükümdarlar / Generaller</h3><div class="sprow">' + [0, 1, 2, 3, 4, 5].map((k) => im(A.rulerUrl(k), 200, 'ruler ' + k)).join('') + '</div>';
+  h += '<div class="sprow">' + [0, 1, 2, 3, 4, 5].flatMap((k) => [0, 1, 2, 3].map((i) => im(A.generalUrl(k, i), 96, `${k}-${i}`))).join('') + '</div>';
+  h += '<h3>Olaylar</h3><div class="sprow">' + ['victory', 'defeat', 'peace'].map((e) => im(A.eventUrl(e), 190, e)).join('') + '</div>';
+  h += '<h3>İkonlar</h3><div class="sprow">' + A.ICON_IDS.map((i) => im(A.iconUrl(i), 64, i)).join('') + '</div>';
+  sect('sprites', 'Raster spritelar', `<div style="background:#141c36;padding:10px;border-radius:8px">${h}</div>`);
 }
 window.__ready = true;
 </script>

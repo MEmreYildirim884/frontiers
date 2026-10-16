@@ -2,8 +2,8 @@
 import * as G from '../rules/index.js';
 import { $, $$, esc, toast } from './dom.js';
 import { icon } from './icons.js';
-import { unitIcon, unitCardArt, portraitUrl } from './art.js';
-import { K, fmt, sign, pct, kName, flag, bar, unitRows, unitLabel, stanceName, terrainName, typeName, fuzzUnits } from './common.js';
+import { unitSprite, portraitUrl, fortSprite, fortDamageSprite, buildingSprite } from './art.js';
+import { K, fmt, sign, pct, kName, flag, bar, unitRows, unitLabel, stanceName, terrainName, typeName, fuzzUnits, ruler } from './common.js';
 import { audio } from '../audio/audio.js';
 
 const PACK_OPTIONS = [1, 3, 5, 10];
@@ -25,7 +25,7 @@ function overview(ui, el) {
   const wars = s.wars.filter(w => w.a === me || w.b === me).map(w => (w.a === me ? w.b : w.a));
   const traits = K[me].traits.map(t => `<li class="${t.bad ? 'bad' : 'good'}"><b>${esc(t.name)}</b> — ${esc(t.desc)}</li>`).join('');
   el.innerHTML = `<div class="panel3">
-    <div class="p3-head">${flag(me, 54)}<div><small>Devletin</small><h2>${kName(s, me)}</h2><span class="muted">${esc(K[me].full)}</span></div></div>
+    <div class="p3-head">${ruler(me, 'big')}<div><small>Devletin</small><h2>${kName(s, me)}</h2><span class="muted">${esc(K[me].full)}</span><div>${flag(me, 42)}</div></div><button class="mini-btn close" id="ov-close" title="Kapat">✕</button></div>
     <ul class="traits">${traits}</ul>
     <dl class="kv">
       <dt>Bölgeler</dt><dd>${rep.regions}</dd>
@@ -38,6 +38,7 @@ function overview(ui, el) {
     <p class="muted small">Haritada bir orduya tıkla: gidebileceği bölgeler parlar. Bir bölgeye tıkla: bilgi, inşa ve asker üretimi.</p>
   </div>`;
   bindArmyRows(ui, el);
+  $('#ov-close', el).onclick = () => { ui.clearSel(); ui.refresh(); };
 }
 
 function armyRow(s, a, cls = '') {
@@ -82,7 +83,7 @@ function armyPanel(ui, el, a) {
     </div>
     ${mine ? `<dl class="kv small"><dt>Bakım</dt><dd>${fmt(upkeep)} altın/tur</dd><dt>Erzak</dt><dd>${food.toFixed(1)}/tur</dd><dt>Duruş</dt><dd>${stanceName(a.stance)}</dd></dl>` : ''}
     <h3 class="p3-sub">Bileşim ${splitting ? '<small>— ayrılacak sayıları gir</small>' : ''}</h3>
-    ${unitRows(units, { editable: splitting })}
+    ${unitRows(units, { editable: splitting, owner: a.owner })}
     ${splitting ? `<div class="row-btns"><input id="ap-split-name" placeholder="Yeni ordu adı (isteğe bağlı)" maxlength="28"><button class="btn btn-small btn-primary" id="ap-split-go">Ayır</button><button class="btn btn-small" id="ap-split-x">Vazgeç</button><button class="btn btn-small" id="ap-split-half">Yarısı</button></div>` : ''}
     ${mine ? `<h3 class="p3-sub">Duruş</h3><div class="seg seg-wrap" id="ap-stance">${Object.entries(G.STANCES).map(([k, v]) => `<button data-stance="${k}" class="${a.stance === k ? 'on' : ''}" title="${esc(v.desc)}" ${can ? '' : 'disabled'}>${v.name}</button>`).join('')}</div>
     <p class="muted small">${esc(G.STANCES[a.stance].desc)}</p>
@@ -151,7 +152,7 @@ function regionInfo(ui, el, id) {
       <dt>Arazi</dt><dd>${T.name} <small class="muted">hareket ${T.move} · savunma ×${T.def} · ikmal kap. ${fmt(G.regionCapacity(s, id))}</small></dd>
       <dt>Nüfus</dt><dd>${fmt(m.pop * 1000)}</dd>
       <dt>Gelir</dt><dd>${fmt(y.gold)} altın · ${y.food.toFixed(1)} erzak · ${y.iron.toFixed(1)} demir · ${fmt(y.manpower)} insan gücü</dd>
-      <dt>Kale</dt><dd>${r.fort ? `<b>${F.name}</b> (Sv${r.fort}) ${bar(integ, 1, '', 'Sur')} <small>sur ${fmt(r.wall)}/${fmt(G.wallMax(s, id))}</small><br><small>garnizon ${fmt(gar)}/${fmt(F.garrison)} gerekli · erzak ${F.food} tur · ${F.guns} kale topu</small>` : '<span class="muted">Yok</span>'}</dd>
+      <dt>Kale</dt><dd>${r.fort ? `<img class="fort-thumb" src="${integ < 0.5 ? fortDamageSprite(integ < 0.25 ? 3 : 2) : fortSprite(r.fort)}" alt=""><b>${F.name}</b> (Sv${r.fort}) ${bar(integ, 1, '', 'Sur')} <small>sur ${fmt(r.wall)}/${fmt(G.wallMax(s, id))}</small><br><small>garnizon ${fmt(gar)}/${fmt(F.garrison)} gerekli · erzak ${F.food} tur · ${F.guns} kale topu</small>` : '<span class="muted">Yok</span>'}</dd>
       <dt>İkmal</dt><dd>${sup === 2 ? '<span class="good">İkmal ağında</span>' : sup === 1 ? '<span class="warn-text">İleri hat (kısmi ikmal)</span>' : '<span class="bad">İkmal yok</span>'}</dd>
       <dt>Binalar</dt><dd>${blds || '<span class="muted">Yok</span>'}</dd>
       ${edges.length ? `<dt>Geçişler</dt><dd>${edges.map(x => `${esc(G.META[x.n].name)}: ${x.e.pass ? 'dağ geçidi' : x.e.bridge ? 'köprülü nehir' : '<b class="warn-text">köprüsüz nehir</b> (+1 hareket, saldırıya −%25)'}`).join('<br>')}</dd>` : ''}
@@ -170,6 +171,7 @@ function buildTab(ui, el, id) {
   const s = ui.s, me = ui.me, r = s.regions[id], pl = s.players[me];
   const can = ui.canAct();
   const card = (key, name, lvl, max, desc, cost, err) => `<div class="bld ${err ? 'off' : ''}">
+    <img class="bld-img" src="${key === 'fort' ? fortSprite(Math.max(1, cost?.level ?? lvl)) : buildingSprite(key)}" alt="" loading="lazy">
     <div class="bld-h"><b>${name}</b><span class="lvl">${'◆'.repeat(lvl)}${'◇'.repeat(Math.max(0, max - lvl))}</span></div>
     <p>${esc(desc)}</p>
     ${cost ? `<div class="bld-c"><span>${icon('coin')} ${fmt(cost.gold)}</span>${cost.iron ? `<span>⚒ ${cost.iron}</span>` : ''}<span>⏳ ${cost.time} tur</span>
@@ -196,7 +198,7 @@ function recruitTab(ui, el, id) {
       const U = G.UNITS[t], packs = ui.recruitPacks[t] ?? 1, c = G.recruitCost(t, packs), err = G.recruitCheck(s, me, id, t, packs);
       const time = G.recruitTime(s, id, t), up = U.upkeep * packs * (G.NATION[me].upkeepClass[U.cls] ?? 1);
       return `<article class="ucard ${err ? 'off' : ''}" style="--c:${K[me].color}">
-        <div class="uc-art">${unitCardArt(t, me)}<span class="uc-ico">${unitIcon(t)}</span></div>
+        <div class="uc-art"><img src="${unitSprite(me, t)}" alt="${esc(U.name)}" loading="lazy"></div>
         <header><b>${U.name}</b><small>${U.pack} ${U.cls === 'art' ? 'top' : U.cls === 'cav' ? 'atlı' : 'asker'} / paket</small></header>
         <div class="uc-stats"><span title="Fiyat">${icon('coin')} ${fmt(U.cost)}</span><span title="Bakım/tur">⟳ ${U.upkeep}</span><span title="Üretim süresi">⏳ ${time}</span><span title="Hız">➹ ${U.speed}</span>${U.iron ? `<span title="Demir">⚒ ${U.iron}</span>` : ''}</div>
         <ul class="uc-pros">${U.good.slice(0, 2).map(g => `<li>${esc(g)}</li>`).join('')}</ul>
@@ -226,6 +228,7 @@ function siegeTab(ui, el, id) {
   const order = ['encircle', 'prepare', 'bombard', 'breach', 'assault', 'starve'];
   const cur = G.SIEGE_STAGES[sum.stage].n;
   el.innerHTML = `
+    <div class="siege-art"><img src="${sum.breached || sum.integrity < 0.25 ? fortDamageSprite(3) : sum.integrity < 0.5 ? fortDamageSprite(2) : sum.integrity < 0.8 ? fortDamageSprite(1) : fortSprite(r.fort)}" alt=""></div>
     <div class="siege-head">${flag(sum.by, 26)} <b>${kName(s, sum.by)}</b> kuşatıyor · ${sum.turns}. tur</div>
     <ol class="stages">${order.map(k => { const st = G.SIEGE_STAGES[k]; return `<li class="${st.n < cur ? 'done' : st.n === cur ? 'on' : ''}" title="${esc(st.desc)}"><b>${st.n}</b>${st.name}</li>`; }).join('')}</ol>
     <p class="muted small">${esc(G.SIEGE_STAGES[sum.stage].desc)}</p>
