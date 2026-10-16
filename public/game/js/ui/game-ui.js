@@ -69,14 +69,23 @@ export class GameUI {
     setTimeout(() => this.map.focus(this.s.regions[cap].owner === this.me ? cap : G.regionsOf(this.s, this.me)[0] ?? cap, narrow ? 2.4 : 1.7), 250);
   }
 
+  // Aç-kapa tercihleri tarayıcıda hatırlanır; varsayılan hepsi kapalı (harita geniş kalsın).
+  get ui() { if (!this._ui) { try { this._ui = JSON.parse(localStorage.getItem('frontiers-v3-ui') ?? '{}'); } catch { this._ui = {}; } } return this._ui; }
+  toggleUi(k, v = !this.ui[k]) { this.ui[k] = v; try { localStorage.setItem('frontiers-v3-ui', JSON.stringify(this.ui)); } catch { /* yok say */ } audio.sfx('click'); }
+
   buildModes() {
-    $('#map-modes').innerHTML = MAP_MODES.map(m => `<button data-mode="${m.id}" class="${m.id === this.map.mode ? 'on' : ''}" title="${esc(m.name)} (${m.key}) — ${esc(m.desc)}"><span class="mm-ico mm-${m.id}"></span><span>${m.name}</span></button>`).join('');
-    $$('#map-modes [data-mode]').forEach(b => (b.onclick = () => this.setMode(b.dataset.mode)));
+    const cur = MAP_MODES.find(m => m.id === this.map.mode);
+    const open = !!this.ui.modesOpen;
+    $('#map-modes').classList.toggle('open', open);
+    $('#map-modes').innerHTML = `<button class="mm-toggle" id="mm-toggle" title="Harita modları (1–7)"><span class="mm-ico mm-${cur.id}"></span><span>${cur.name}</span><b>${open ? '▴' : '▾'}</b></button>`
+      + (open ? MAP_MODES.map(m => `<button data-mode="${m.id}" class="${m.id === this.map.mode ? 'on' : ''}" title="${esc(m.name)} (${m.key}) — ${esc(m.desc)}"><span class="mm-ico mm-${m.id}"></span><span>${m.name}</span><kbd>${m.key}</kbd></button>`).join('') : '');
+    $('#mm-toggle').onclick = () => { this.toggleUi('modesOpen'); this.buildModes(); };
+    $$('#map-modes [data-mode]').forEach(b => (b.onclick = () => { this.setMode(b.dataset.mode); this.ui.modesOpen = false; this.toggleUi('modesOpen', false); this.buildModes(); }));
   }
   setMode(mode) {
     audio.sfx('click');
     this.map.setMode(mode);
-    $$('#map-modes [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+    this.buildModes();
     this.renderMap(); this.renderLegend();
   }
 
@@ -378,15 +387,17 @@ export class GameUI {
     const res = (ico, label, val, sub, tip, cls = '') => `<div class="res ${cls}" title="${esc(tip)}"><span class="res-ico">${ico}</span><div><small>${label}</small><b>${val}</b>${sub ? `<em>${sub}</em>` : ''}</div></div>`;
     $('#tb-res').innerHTML = [
       res(ic('gold'), 'Hazine', fmt(pl.gold), `<span class="${rep.net >= 0 ? 'good' : 'bad'}">${sign(rep.net)}</span>`, `Gelir ${fmt(rep.income)} − gider ${fmt(rep.expense)} (ordu ${fmt(rep.army)}, bina ${fmt(rep.buildings)}${rep.interest ? `, faiz ${fmt(rep.interest)}` : ''})`, pl.gold < 0 ? 'neg' : ''),
-      res(ic('trade'), 'Gelir', fmt(rep.income), '', 'Tur başına vergi + ticaret + tazminat'),
-      res(ic('build'), 'Gider', fmt(rep.expense), '', 'Ordu bakımı + bina/kale bakımı + faiz'),
-      res(ic('population'), 'Nüfus', fmt(rep.pop) + ' B', '', 'Toplam nüfus (bin)'),
+      res(ic('trade'), 'Gelir', fmt(rep.income), '', 'Tur başına vergi + ticaret + tazminat', 'extra'),
+      res(ic('build'), 'Gider', fmt(rep.expense), '', 'Ordu bakımı + bina/kale bakımı + faiz', 'extra'),
+      res(ic('population'), 'Nüfus', fmt(rep.pop) + ' B', '', 'Toplam nüfus (bin)', 'extra'),
       res(ic('infantry'), 'İnsan gücü', fmt(pl.manpower), `+${fmt(rep.manpower)}`, `Asker alınabilecek nüfus · üst sınır ${fmt(rep.manpowerCap)}`),
       res(ic('food'), 'Erzak', fmt(pl.food), `<span class="${rep.foodNet >= 0 ? 'good' : 'bad'}">${rep.foodNet >= 0 ? '+' : ''}${rep.foodNet}</span>`, `Üretim ${rep.food} − ordu tüketimi ${rep.foodUse}`, pl.food < 20 ? 'neg' : ''),
-      res(ic('mine'), 'Demir', fmt(pl.iron), `+${rep.iron}`, 'Top, ağır süvari, kale ve demir yolu için'),
+      res(ic('mine'), 'Demir', fmt(pl.iron), `+${rep.iron}`, 'Top, ağır süvari, kale ve demir yolu için', 'extra'),
       res(ic('morale'), 'İstikrar', Math.round(pl.stability), bar(pl.stability), 'Vergi ve insan gücü çarpanı; düşükse ayaklanma', pl.stability < 30 ? 'neg' : ''),
-      res(ic('war'), 'Yorgunluk', Math.round(pl.weariness), '', 'Savaş yorgunluğu: istikrarı ve insan gücünü düşürür', pl.weariness > 50 ? 'neg' : ''),
-    ].join('');
+      res(ic('war'), 'Yorgunluk', Math.round(pl.weariness), '', 'Savaş yorgunluğu: istikrarı ve insan gücünü düşürür', pl.weariness > 50 ? 'neg' : 'extra'),
+    ].join('') + `<button class="res-more" id="res-more" title="${this.ui.resAll ? 'Daha az göster' : 'Bütün kaynakları göster'}">${this.ui.resAll ? '◂' : '▸'}</button>`;
+    $('#tb-res').classList.toggle('all', !!this.ui.resAll);
+    $('#res-more').onclick = () => { this.toggleUi('resAll'); this.renderTop(); };
     const season = G.seasonOf(s.round);
     $('#tb-date').innerHTML = `<span class="season s-${season.id}"></span><div><small>${s.config.maxRounds ? `Tur ${s.round}/${s.config.maxRounds}` : `Tur ${s.round}`}</small><b>${G.dateText(s.round)}</b></div>`;
     $('#g-sound').innerHTML = icon(audio.settings.muted ? 'mute' : 'horn');
@@ -398,8 +409,10 @@ export class GameUI {
   renderPlayers() {
     const s = this.s, me = this.me;
     const pp = $('#players-panel');
-    pp.classList.toggle('collapsed', !!this.playersCollapsed);
-    pp.innerHTML = `<h3 class="panel-title" id="pp-toggle" title="Daralt / genişlet">${this.playersCollapsed ? '▸' : 'Devletler ▾'}</h3>` + s.order.map(id => {
+    const closed = !this.ui.playersOpen;
+    pp.classList.toggle('collapsed', closed);
+    if (closed) { pp.innerHTML = `<button class="pp-toggle" id="pp-toggle" title="Devletler listesini aç">${icon('users')} Devletler ▸</button>`; $('#pp-toggle').onclick = () => { this.toggleUi('playersOpen'); this.renderPlayers(); }; return; }
+    pp.innerHTML = `<h3 class="panel-title" id="pp-toggle" title="Kapat">Devletler ▾</h3>` + s.order.map(id => {
       const p = s.players[id];
       const war = id !== me && G.atWar(s, me, id), ally = id !== me && G.allied(s, me, id);
       return `<div class="prow3 ${id === s.active ? 'active' : ''} ${p.alive ? '' : 'dead'} ${id === me ? 'me' : ''}" style="--c:${K[id].color}">
@@ -408,7 +421,7 @@ export class GameUI {
         ${war ? '<span class="rel-badge war" title="Savaşta">⚔</span>' : ally ? '<span class="rel-badge ally" title="Müttefik">⛨</span>' : ''}
         ${id === s.active && !s.finished ? '<span class="turn-arrow">◀</span>' : ''}</div>`;
     }).join('');
-    $('#pp-toggle').onclick = () => { this.playersCollapsed = !this.playersCollapsed; this.renderPlayers(); };
+    $('#pp-toggle').onclick = () => { this.toggleUi('playersOpen'); this.renderPlayers(); };
   }
 
   renderMap() {
@@ -450,7 +463,11 @@ export class GameUI {
 
   renderBottom() {
     const h = this.hint();
-    $('#hint').innerHTML = `<small>Şimdi ne yapmalıyım?</small><b>${esc(h.t)}</b><span>${esc(h.d)}</span>`;
+    const hide = !!this.ui.hintHidden;
+    $('#hint').classList.toggle('hidden', hide);
+    $('#hint').innerHTML = hide ? `<button class="hint-open" id="hint-open" title="İpucunu göster">?</button>` : `<b>${esc(h.t)}</b><span>${esc(h.d)}</span><button class="hint-x" id="hint-x" title="İpucunu gizle">✕</button>`;
+    $('#hint-open')?.addEventListener('click', () => { this.toggleUi('hintHidden', false); this.renderBottom(); });
+    $('#hint-x')?.addEventListener('click', () => { this.toggleUi('hintHidden', true); this.renderBottom(); });
     $('#hint').classList.toggle('active', this.myTurn);
     const end = $('#g-end');
     end.disabled = !this.canAct();
