@@ -75,7 +75,8 @@ export function battleReport(ui, b) {
     <div class="br-nums"><span>Başlangıç <b>${fmt(x.men0)}</b></span><span>Kayıp <b class="bad">${fmt(x.men0 - x.men1)}</b></span><span>Kalan <b>${fmt(x.men1)}</b></span></div>
     ${unitRows(x.start, { lost: x.lost })}
     <div class="br-m">Moral ${Math.round(x.morale0 * 100)} → <b>${Math.round(x.morale1 * 100)}</b> · verilen hasar ${fmt(x.dealt)} · ikmal %${x.supply}</div></div>`;
-  const retreats = (b.retreats ?? []).map(r => r.to === null ? `${esc(r.army)} kaçacak yer bulamadı, ${fmt(r.lost)} asker esir düştü.` : r.to === 'kale' ? `${esc(r.army)} kaleye çekildi.` : `${esc(r.army)} ${esc(G.META[r.to].name)} bölgesine çekildi.`);
+  const who = r => `${r.owner !== undefined ? kName(s, r.owner) + ' — ' : ''}${esc(r.army)}`;
+  const retreats = (b.retreats ?? []).map(r => r.to === null ? `${who(r)} kaçacak yer bulamadı, ${fmt(r.lost)} asker esir düştü.` : r.to === 'kale' ? `${who(r)} kaleye çekildi.` : `${who(r)} ${esc(G.META[r.to].name)} bölgesine çekildi.`);
   modal({ title: `${b.kind === 'assault' ? 'Hücum' : 'Savaş'} Raporu — ${esc(G.META[b.to].name)}`, wide: true, body: `
     <div class="br-banner ${mine ? (iWon ? 'win' : 'lose') : ''}">${b.kind === 'assault' ? (win ? 'Kale düştü!' : 'Hücum püskürtüldü') : win ? `${kName(s, b.attacker)} kazandı` : `${kName(s, b.defender)} savunmayı tuttu`}</div>
     <div class="br-ctx"><span>Arazi: <b>${G.TERRAIN[b.terrain]?.name ?? '-'}</b></span><span>${b.rounds} çarpışma turu</span>${b.river ? '<span class="bad">Köprüsüz nehir</span>' : ''}${b.fort ? `<span>Kale Sv${b.fort} · sur çarpanı ×${b.wallFactor}</span>` : ''}${b.pursuit ? `<span>Takip kaybı %${Math.round(b.pursuit * 100)}</span>` : ''}</div>

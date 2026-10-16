@@ -80,7 +80,7 @@ export const UNITS = {
     bad: ['Açık arazide ağır süvari', 'Pahalı, sınırlı sayıda'],
     special: 'Gedikten hücumda +%60, şehirlerde +%30. Surlara el bombasıyla az da olsa hasar verir.' },
   guard: { name: 'Muhafız / Elit Piyade', short: 'Muhafız', cls: 'inf', pack: 60, cost: 660, upkeep: 45, time: 2, manpower: 60, iron: 5, speed: 2,
-    fire: 0.85, shock: 1.0, hp: 1.35, def: 1.4, morale: 1.4, wall: 0.05, req: { barracks: 1, academy: 1 },
+    fire: 0.75, shock: 0.85, hp: 1.25, def: 1.3, morale: 1.3, wall: 0.05, req: { barracks: 1, academy: 1 },
     terrain: {}, inspire: 0.12, capital: 1.15,
     good: ['Uzun ve zorlu çatışmalar', 'Ordu moralini yükseltir', 'Başkent savunması'],
     bad: ['Çok yüksek bakım', 'Sayıca az'],
@@ -133,8 +133,8 @@ export const COUNTERS = {
 };
 
 export const COMBAT = {
-  maxRounds: 6, casualty: 0.3, breakMorale: 0.22, breakStrength: 0.18, randomness: 0.22, fortune: 0.12,
-  fireWeight: [1.0, 1.0, 0.75, 0.65, 0.6, 0.6], shockWeight: [0.45, 0.7, 1.0, 1.0, 1.0, 1.0],
+  maxRounds: 8, casualty: 0.2, breakMorale: 0.22, breakStrength: 0.18, randomness: 0.22, fortune: 0.2,
+  fireWeight: [1.0, 1.0, 0.75, 0.65, 0.6, 0.6, 0.6, 0.6], shockWeight: [0.45, 0.7, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
   moraleLoss: 2.4, screenRatio: 18, artExposedProtected: 0.25, artExposedOpen: 1.6, preparedDef: 1.15,
   riverAttack: 0.75, amphibious: 0.75, pursuitBase: 0.05,
 };

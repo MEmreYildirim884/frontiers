@@ -232,10 +232,10 @@ export function applyBattle(s, res, attackers, defenders, info, rng = Math.rando
     for (const d of defenders) {
       if (isEmpty(d.units)) continue;
       const r = s.regions[info.to];
-      if (r.owner === d.owner && r.fort > 0 && !r.siege) { d.stance = 'garrison'; retreats.push({ army: d.name, to: 'kale' }); continue; }
+      if (r.owner === d.owner && r.fort > 0 && !r.siege) { d.stance = 'garrison'; retreats.push({ army: d.name, owner: d.owner, to: 'kale' }); continue; }
       const dest = retreatTarget(s, d, info.to);
-      if (dest === null) { retreats.push({ army: d.name, to: null, lost: manOf(d.units) }); d.units = {}; }
-      else { d.region = dest; d.stance = 'field'; d.mp = 0; retreats.push({ army: d.name, to: dest }); }
+      if (dest === null) { retreats.push({ army: d.name, owner: d.owner, to: null, lost: manOf(d.units) }); d.units = {}; }
+      else { d.region = dest; d.stance = 'field'; d.mp = 0; retreats.push({ army: d.name, owner: d.owner, to: dest }); }
     }
   }
   dropEmpty(s);

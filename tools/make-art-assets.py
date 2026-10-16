@@ -91,6 +91,112 @@ def make_portraits():
     print('portraits done')
 
 
+# =================================================================== section 2: atlas sprites
+# Source atlases are copied to tools/ref-atlas/atlas{1..4}.png (1536x1024).
+# Background removal uses rembg (u2net):  pip install rembg onnxruntime
+#   (optional: FRONTIERS_PYLIB=<dir> adds a pip --target dir to sys.path; U2NET_HOME caches the model)
+ATLAS_DIR = os.path.join(ROOT, 'tools', 'ref-atlas')
+IMG = os.path.join(ROOT, 'public', 'game', 'assets', 'img')
+_atl, _sess = {}, {}
+
+
+def atlas(n):
+    if n not in _atl:
+        _atl[n] = Image.open(os.path.join(ATLAS_DIR, f'atlas{n}.png')).convert('RGB')
+    return _atl[n]
+
+
+def _session():
+    if 'u' not in _sess:
+        if os.environ.get('FRONTIERS_PYLIB'):
+            sys.path.insert(0, os.environ['FRONTIERS_PYLIB'])
+        from rembg import new_session
+        _sess['u'] = new_session('u2net')
+    return _sess['u']
+
+
+def cutout(n, box, up=3, minfrac=0.1, keep_bottom=0.5, edge_drop=0.35, thr=0.1, drop=()):
+    """Crop box from atlas n, remove background, keep the main figure group, trim. Returns RGBA at `up`x."""
+    import cv2
+    sess = _session()
+    from rembg import remove
+    x0, y0, x1, y1 = box
+    c = atlas(n).crop(box)
+    for (a, b, cc, d) in drop:  # paint-out rects (atlas coords) e.g. neighbour weapons
+        Image.Image.paste(c, (0, 0, 0), (a - x0, b - y0, cc - x0, d - y0))
+    c = c.resize((c.width * up, c.height * up), Image.LANCZOS)
+    r = remove(c, session=sess)
+    a = np.asarray(r.split()[3]).astype(np.float32) / 255
+    a[a < thr] = 0
+    m = (a > 0.5).astype(np.uint8)
+    h, w = m.shape
+    num, lab, st, _ = cv2.connectedComponentsWithStats(m, 8)
+    if num > 1:
+        areas = st[1:, cv2.CC_STAT_AREA]
+        big = areas.max()
+        keep = np.zeros(num, bool)
+        for i in range(1, num):
+            ar = st[i, cv2.CC_STAT_AREA]
+            L, T, W_, H_ = st[i, 0], st[i, 1], st[i, 2], st[i, 3]
+            touches = L <= 1 or T <= 1 or L + W_ >= w - 1
+            if ar == big:
+                keep[i] = True
+            elif ar >= big * minfrac and (T + H_) >= h * keep_bottom and not (touches and ar < big * edge_drop):
+                keep[i] = True
+        km = keep[lab].astype(np.uint8)
+        km = cv2.dilate(km, np.ones((5, 5), np.uint8))  # keep soft edges around kept parts
+        a = a * km
+    rgb = np.asarray(r.convert('RGB'))
+    out = np.dstack([rgb, (a * 255).astype(np.uint8)])
+    ys, xs = np.where(out[:, :, 3] > 6)
+    out = out[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    return Image.fromarray(out, 'RGBA')
+
+
+def save_sprite(im, path, scale, pad=4):
+    """im at some resolution; scale relative to atlas native = (target/native)."""
+    from PIL import ImageFilter
+    im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))), Image.LANCZOS)
+    r, g, b, a = im.split()
+    rgb = Image.merge('RGB', (r, g, b)).filter(ImageFilter.UnsharpMask(1.0, 60, 2))
+    im = Image.merge('RGBA', (*rgb.split(), a))
+    out = Image.new('RGBA', (im.width + 2 * pad, im.height + 2 * pad), (0, 0, 0, 0))
+    out.paste(im, (pad, pad))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    out.save(path, optimize=True)
+
+
+UNIT_ORDER_INF = ['militia', 'line', 'light', 'grenadier', 'guard']
+UNIT_ORDER_CAV = ['hussar', 'cuirassier', 'field', 'siege', 'sapper']
+# atlas3: per kingdom (inf_y, inf_bounds, cav_y, cav_bounds); bounds = 6 x-borders for 5 cells
+UNIT_CELLS = {
+    0: ((36, 138), (5, 92, 185, 268, 380, 505), (155, 263), (5, 93, 178, 280, 392, 505)),
+    1: ((36, 138), (520, 612, 708, 795, 898, 1000), (155, 263), (520, 616, 703, 808, 934, 1012)),
+    2: ((36, 138), (1035, 1136, 1205, 1305, 1395, 1510), (155, 263), (1030, 1122, 1205, 1310, 1425, 1515)),
+    3: ((332, 435), (5, 95, 188, 275, 390, 505), (450, 561), (5, 97, 187, 285, 400, 505)),
+    4: ((332, 435), (515, 605, 700, 805, 900, 1010), (450, 561), (515, 608, 700, 803, 932, 1010)),
+    5: ((332, 435), (1030, 1115, 1203, 1300, 1403, 1515), (450, 561), (1030, 1115, 1210, 1312, 1432, 1515)),
+}
+UNIT_FIX = {}  # (k, type) -> dict of cutout kwargs overrides (box, drop, ...)
+
+
+def make_units(only=None):
+    for k, (iy, ib, cy, cb) in UNIT_CELLS.items():
+        for row, ys, bs in ((UNIT_ORDER_INF, iy, ib), (UNIT_ORDER_CAV, cy, cb)):
+            for i, t in enumerate(row):
+                if only and (k, t) not in only:
+                    continue
+                kw = dict(UNIT_FIX.get((k, t), {}))
+                box = kw.pop('box', (bs[i], ys[0], bs[i + 1], ys[1]))
+                im = cutout(3, box, **kw)
+                save_sprite(im, os.path.join(IMG, 'units', f'{k}-{t}.png'), 2 / 3)
+        print('units', k)
+
+
 if __name__ == '__main__':
-    make_flags()
-    make_portraits()
+    args = sys.argv[1:]
+    if not args or 'flags' in args:
+        make_flags()
+        make_portraits()
+    if not args or 'units' in args:
+        make_units()
