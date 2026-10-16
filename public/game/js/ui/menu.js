@@ -292,8 +292,8 @@ export class Menu {
       <div class="credits">
         <h3>FRONTIERS — Cephe ve Kuşatma</h3><p>Sürüm 3.0 · POLS 420 Capstone projesi</p>
         <h4>Oyun tasarımı ve geliştirme</h4><p>Muhammed Emre Yıldırım ve FRONTIERS ekibi</p>
-        <h4>Müzik</h4><p>Stephen Rippy & David Rippy — <i>Age of Empires II: The Age of Kings</i> ve <i>Age of Empires III</i> film müzikleri<br>
-          <small>Noddinagushpa (Main Title) · Shamburger · I Will Beat on Your Behind · Drizzle · Machina del Diablo · T Station. Tüm hakları sahiplerine aittir.</small></p>
+        <h4>Müzik</h4><p>Kevin MacLeod (incompetech.com) — <i>Five Armies, Heroic Age, Volatile Reaction, Achaidh Cheide, Lord of the Land, Folk Round, Teller of the Tales, Minstrel Guild, Thatched Villagers, Master of the Feast</i><br>
+          <small>Creative Commons: By Attribution 4.0 lisansıyla kullanılmıştır — http://creativecommons.org/licenses/by/4.0/</small></p>
         <h4>Görseller</h4><p>Boyalı dünya haritası, sancaklar ve ordu tabloları: proje sahibinin sağladığı referans görseller. Birlik figürleri, kale ve şehir modelleri, simgeler ve efekt sesleri oyun için üretildi.</p>
         <h4>Yazı tipleri</h4><p>Cinzel (Natanael Gama) · Alegreya Sans (Huerta Tipográfica) — SIL Open Font License</p>
         <h4>Esin kaynağı</h4><p>Risk, Total War, Europa Universalis ve Hearts of Iron gibi strateji oyunları; hiçbirinin kopyası değildir. Önceki sürümler: <a href="risk/index.html">RISK modu (v2.0)</a> · <a href="klasik/index.html">Klasik mod (v0.8)</a>.</p>

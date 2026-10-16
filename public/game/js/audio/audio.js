@@ -3,14 +3,14 @@
 const BASE = new URL('../../assets/audio/', import.meta.url).href;
 const FADE = 1.6;
 
-// "savas.mp3" oyun açılışında ve savaşta; diğer parçalar adlarına göre sakin/gergin anlara dağıtıldı.
+// Müzik: Kevin MacLeod (incompetech.com), CC BY 4.0 — parçalar sakin/gergin anlara dağıtıldı.
 export const PLAYLISTS = {
-  menu: { tracks: ['menu.mp3'], loop: true },
-  lobby: { tracks: ['shamburger.mp3'], loop: true },
-  credits: { tracks: ['t-station.mp3'], loop: true },
-  campaign: { tracks: ['savas.mp3', 'drizzle.mp3', 't-station.mp3', 'shamburger.mp3'] },
-  battle: { tracks: ['savas.mp3', 'i-will-beat.mp3', 'machina-del-diablo.mp3'] },
-  victory: { tracks: ['menu.mp3'], loop: true },
+  menu: { tracks: ['five-armies.mp3'], loop: true },
+  lobby: { tracks: ['thatched-villagers.mp3'], loop: true },
+  credits: { tracks: ['master-of-the-feast.mp3'], loop: true },
+  campaign: { tracks: ['achaidh-cheide.mp3', 'lord-of-the-land.mp3', 'folk-round.mp3', 'teller-of-the-tales.mp3', 'minstrel-guild.mp3'] },
+  battle: { tracks: ['volatile-reaction.mp3', 'five-armies.mp3', 'heroic-age.mp3'] },
+  victory: { tracks: ['heroic-age.mp3'], loop: true },
 };
 
 const SETTINGS_KEY = 'frontiers-settings';
@@ -77,7 +77,7 @@ class AudioManager {
     this.playlist = name;
     const list = PLAYLISTS[name];
     const i = this.index[name] ?? 0;
-    // Aynı parça zaten çalıyorsa baştan başlatma (ör. sefer → savaş, ikisi de savas.mp3).
+    // Aynı parça zaten çalıyorsa baştan başlatma (ör. sefer → savaş, ikisi de aynı parça).
     const cur = this.decks[this.current];
     if (cur && !cur.el.paused && cur.el.src.endsWith('/' + list.tracks[i])) {
       this.index[name] = (i + 1) % list.tracks.length;

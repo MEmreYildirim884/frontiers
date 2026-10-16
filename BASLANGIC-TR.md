@@ -60,5 +60,4 @@ oluşturmayın.
   geçilirse ülke kurtarılamaz (diğer oyuncular 90 sn sonra o turu yapay zekâya devredebilir).
 - Yapay zekâ dengesi otomatik simülasyonlarla ayarlandı; köşedeki krallıklar
   (Kızıl Aslan, Bakır Kılıç) yapay zekâ maçlarında biraz daha sık kazanıyor.
-- Müzikler Age of Empires film müzikleridir; herkese açık yayında lisans durumu
-  kontrol edilmelidir.
+- Müzik: Kevin MacLeod (incompetech.com), CC BY 4.0; kredilerde atıf var.

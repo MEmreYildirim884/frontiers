@@ -45,4 +45,4 @@ server/rooms.js            v3 oda servisi + RoomRouter (v3 / v2 RISK / klasik)
 
 Tüm hamleler `applyCommand` kapısından geçer; tek oyunculu oyun, yapay zekâ ve sunucu aynı kuralları kullanır.
 
-> Müzikler Age of Empires II/III film müzikleridir (Stephen Rippy, David Rippy); hakları sahiplerine aittir. Herkese açık yayında lisans durumunu kontrol edin.
+> Müzik: Kevin MacLeod (incompetech.com), Creative Commons By Attribution 4.0 — http://creativecommons.org/licenses/by/4.0/

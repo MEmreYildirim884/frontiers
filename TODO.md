@@ -4,7 +4,7 @@ Son durum (2026-10-16): v3.0 "Cephe ve Kuşatma" tamamlandı ve GitHub Pages'e y
 v2.0 RISK modu `/game/risk/`, v0.8 Klasik mod `/game/klasik/` altında çalışmaya devam ediyor.
 
 ## Karar bekleyenler (kullanıcıya sor)
-- [ ] **Müzik telifi:** parçalar Age of Empires II/III film müzikleri ve artık herkese açık GitHub deposunda. Telifsiz parçalarla değiştirilsin mi?
+- [x] Müzikler Kevin MacLeod (CC BY 4.0) parçalarıyla değiştirildi (2026-10-16). Eski parçalar git geçmişinde duruyor; tamamen silmek için geçmiş yeniden yazılmalı (kullanıcı onayı gerekir).
 - [ ] P2P odalarda ev sahibi sekmeyi kapatırsa oyun durur; istenirse kalıcı sunucu (Cloudflare) yayını.
 
 ## İyileştirme fikirleri
