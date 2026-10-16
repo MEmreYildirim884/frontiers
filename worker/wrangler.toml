@@ -1,9 +1,11 @@
 name = "frontiers-api"
 main = "index.js"
 compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
 
 [[d1_databases]]
 binding = "DB"
 database_name = "frontiers"
-database_id = "BURAYA_DOLDURULACAK"
+database_id = "b3720ff5-7d8c-46a6-96fb-03165e9625f8"
 migrations_dir = "../drizzle"
