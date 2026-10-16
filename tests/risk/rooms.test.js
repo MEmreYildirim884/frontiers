@@ -14,7 +14,7 @@ class MemoryStore {
 }
 
 async function lobby(count, options = {}) {
-  const store = new MemoryStore(), service = new RoomService(store, options);
+  const store = new MemoryStore(), service = new RoomService(store, { rng: G.makeRng(4242), ...options });
   const first = await service.create({ name: 'Emre', config: { maxRounds: 15, difficulty: 'normal' } });
   const code = first.code, tokens = [first.token];
   for (let i = 1; i < count; i++) tokens.push((await service.join(code, { name: 'Oyuncu ' + i })).token);
